@@ -7,26 +7,28 @@ import { createInsightsHandlers } from "./route";
 describe("insights api", () => {
   it("returns dashboard summary and contribution details", async () => {
     const store = createInMemoryCollabStore();
-    const ws = store.createWorkspaceWithOwner({
-      name: "Insights Team",
-      ownerUserId: "user-a",
-    }).workspace;
+    const ws = (
+      await store.createWorkspaceWithOwner({
+        name: "Insights Team",
+        ownerUserId: "user-a",
+      })
+    ).workspace;
 
-    const task = store.createTask({
+    const task = await store.createTask({
       workspaceId: ws.id,
       title: "Ship API",
       assigneeId: "user-a",
       difficulty: 2,
       createdBy: "user-a",
     });
-    store.updateTask({
+    await store.updateTask({
       taskId: task.id,
       workspaceId: ws.id,
       userId: "user-a",
       assigneeId: "user-a",
       status: "done",
     });
-    store.createDoc({
+    await store.createDoc({
       workspaceId: ws.id,
       title: "Weekly notes",
       content: "done",
@@ -34,12 +36,12 @@ describe("insights api", () => {
       userId: "user-a",
     });
 
-    const goal = store.createGoal({
+    const goal = await store.createGoal({
       workspaceId: ws.id,
       title: "Beta",
       userId: "user-a",
     });
-    const kr = store.createKeyResult({
+    const kr = await store.createKeyResult({
       goalId: goal.id,
       workspaceId: ws.id,
       title: "Completion",
@@ -48,14 +50,14 @@ describe("insights api", () => {
       userId: "user-a",
     });
     if (!kr) throw new Error("kr should exist");
-    store.updateKeyResultProgress({
+    await store.updateKeyResultProgress({
       keyResultId: kr.id,
       workspaceId: ws.id,
       progress: 60,
       currentValue: 60,
       userId: "user-a",
     });
-    store.addActivityEvent({
+    await store.addActivityEvent({
       workspaceId: ws.id,
       actorUserId: "user-a",
       type: "comment",
@@ -63,7 +65,7 @@ describe("insights api", () => {
 
     const { GET } = createInsightsHandlers({
       getUserId: async () => "user-a",
-      store,
+      getStore: async () => store,
     });
 
     const req = new Request(

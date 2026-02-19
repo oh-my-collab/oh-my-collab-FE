@@ -1,7 +1,8 @@
 import { z } from "zod";
 
-import { getRequestUserId } from "@/lib/auth/request-user";
-import { collabStore, type CollabStore } from "@/lib/data/collab-store";
+import { getSessionUserId } from "@/lib/auth/session-user";
+import { type CollabStore } from "@/lib/data/collab-store";
+import { getRuntimeCollabStore } from "@/lib/data/store-provider";
 
 const updateDocSchema = z.object({
   workspaceId: z.string().min(1),
@@ -11,12 +12,12 @@ const updateDocSchema = z.object({
 
 type DocByIdDeps = {
   getUserId: (request: Request) => Promise<string>;
-  store: CollabStore;
+  getStore: () => Promise<CollabStore> | CollabStore;
 };
 
 const defaultDeps: DocByIdDeps = {
-  getUserId: getRequestUserId,
-  store: collabStore,
+  getUserId: (request) => getSessionUserId(request),
+  getStore: () => getRuntimeCollabStore(),
 };
 
 function getWorkspaceIdFromRequest(request: Request) {
@@ -25,8 +26,12 @@ function getWorkspaceIdFromRequest(request: Request) {
   return workspaceId;
 }
 
-function ensureWorkspaceAccess(store: CollabStore, workspaceId: string, userId: string) {
-  if (!store.isWorkspaceMember(workspaceId, userId)) {
+async function ensureWorkspaceAccess(
+  store: CollabStore,
+  workspaceId: string,
+  userId: string
+) {
+  if (!(await store.isWorkspaceMember(workspaceId, userId))) {
     throw new Error("FORBIDDEN");
   }
 }
@@ -52,10 +57,11 @@ export function createDocByIdHandlers(deps: DocByIdDeps) {
     GET: async (request: Request, context: { params: Promise<{ docId: string }> }) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const workspaceId = getWorkspaceIdFromRequest(request);
-        ensureWorkspaceAccess(deps.store, workspaceId, userId);
+        await ensureWorkspaceAccess(store, workspaceId, userId);
         const { docId } = await context.params;
-        const doc = deps.store.getDocById(workspaceId, docId);
+        const doc = await store.getDocById(workspaceId, docId);
         if (!doc) return Response.json({ message: "NOT_FOUND" }, { status: 404 });
         return Response.json({ doc }, { status: 200 });
       } catch (error) {
@@ -66,10 +72,11 @@ export function createDocByIdHandlers(deps: DocByIdDeps) {
     PATCH: async (request: Request, context: { params: Promise<{ docId: string }> }) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const payload = updateDocSchema.parse(await request.json());
-        ensureWorkspaceAccess(deps.store, payload.workspaceId, userId);
+        await ensureWorkspaceAccess(store, payload.workspaceId, userId);
         const { docId } = await context.params;
-        const doc = deps.store.updateDoc({
+        const doc = await store.updateDoc({
           docId,
           workspaceId: payload.workspaceId,
           title: payload.title,
@@ -86,10 +93,11 @@ export function createDocByIdHandlers(deps: DocByIdDeps) {
     DELETE: async (request: Request, context: { params: Promise<{ docId: string }> }) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const workspaceId = getWorkspaceIdFromRequest(request);
-        ensureWorkspaceAccess(deps.store, workspaceId, userId);
+        await ensureWorkspaceAccess(store, workspaceId, userId);
         const { docId } = await context.params;
-        const deleted = deps.store.deleteDoc(workspaceId, docId);
+        const deleted = await store.deleteDoc(workspaceId, docId);
         if (!deleted) return Response.json({ message: "NOT_FOUND" }, { status: 404 });
         return Response.json({ success: true }, { status: 200 });
       } catch (error) {

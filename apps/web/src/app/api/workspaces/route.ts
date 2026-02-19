@@ -1,35 +1,30 @@
 import { z } from "zod";
 
-import { getRequestUserId } from "@/lib/auth/request-user";
-import { collabStore } from "@/lib/data/collab-store";
+import { getSessionUserId } from "@/lib/auth/session-user";
+import { type CollabStore } from "@/lib/data/collab-store";
+import { getRuntimeCollabStore } from "@/lib/data/store-provider";
 
 const createWorkspaceSchema = z.object({
   name: z.string().min(1).max(120),
 });
 
-type WorkspaceResponse = Awaited<
-  ReturnType<typeof collabStore.createWorkspaceWithOwner>
->;
-
 type WorkspaceDeps = {
   getUserId: (request: Request) => Promise<string>;
-  createWorkspaceWithOwner: (input: {
-    name: string;
-    ownerUserId: string;
-  }) => WorkspaceResponse | Promise<WorkspaceResponse>;
+  getStore: () => Promise<CollabStore> | CollabStore;
 };
 
 const defaultDeps: WorkspaceDeps = {
-  getUserId: getRequestUserId,
-  createWorkspaceWithOwner: (input) => collabStore.createWorkspaceWithOwner(input),
+  getUserId: (request) => getSessionUserId(request),
+  getStore: () => getRuntimeCollabStore(),
 };
 
 export function createPostWorkspaceHandler(deps: WorkspaceDeps) {
   return async function POST(request: Request) {
     try {
       const userId = await deps.getUserId(request);
+      const store = await deps.getStore();
       const payload = createWorkspaceSchema.parse(await request.json());
-      const result = await deps.createWorkspaceWithOwner({
+      const result = await store.createWorkspaceWithOwner({
         name: payload.name,
         ownerUserId: userId,
       });

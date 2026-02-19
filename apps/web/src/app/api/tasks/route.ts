@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-import { getRequestUserId } from "@/lib/auth/request-user";
+import { getSessionUserId } from "@/lib/auth/session-user";
 import {
-  collabStore,
   type CollabStore,
   type TaskPriority,
 } from "@/lib/data/collab-store";
+import { getRuntimeCollabStore } from "@/lib/data/store-provider";
 
 const createTaskSchema = z.object({
   workspaceId: z.string().min(1),
@@ -21,12 +21,12 @@ const createTaskSchema = z.object({
 
 type TaskDeps = {
   getUserId: (request: Request) => Promise<string>;
-  store: CollabStore;
+  getStore: () => Promise<CollabStore> | CollabStore;
 };
 
 const defaultDeps: TaskDeps = {
-  getUserId: getRequestUserId,
-  store: collabStore,
+  getUserId: (request) => getSessionUserId(request),
+  getStore: () => getRuntimeCollabStore(),
 };
 
 function getWorkspaceIdFromUrl(url: string) {
@@ -35,8 +35,12 @@ function getWorkspaceIdFromUrl(url: string) {
   return workspaceId;
 }
 
-function ensureWorkspaceAccess(store: CollabStore, workspaceId: string, userId: string) {
-  if (!store.isWorkspaceMember(workspaceId, userId)) {
+async function ensureWorkspaceAccess(
+  store: CollabStore,
+  workspaceId: string,
+  userId: string
+) {
+  if (!(await store.isWorkspaceMember(workspaceId, userId))) {
     throw new Error("FORBIDDEN");
   }
 }
@@ -62,11 +66,12 @@ export function createTaskHandlers(deps: TaskDeps) {
     GET: async (request: Request) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const workspaceId = getWorkspaceIdFromUrl(request.url);
-        ensureWorkspaceAccess(deps.store, workspaceId, userId);
+        await ensureWorkspaceAccess(store, workspaceId, userId);
 
         return Response.json(
-          { tasks: deps.store.listTasksByWorkspace(workspaceId) },
+          { tasks: await store.listTasksByWorkspace(workspaceId) },
           { status: 200 }
         );
       } catch (error) {
@@ -77,10 +82,11 @@ export function createTaskHandlers(deps: TaskDeps) {
     POST: async (request: Request) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const payload = createTaskSchema.parse(await request.json());
-        ensureWorkspaceAccess(deps.store, payload.workspaceId, userId);
+        await ensureWorkspaceAccess(store, payload.workspaceId, userId);
 
-        const task = deps.store.createTask({
+        const task = await store.createTask({
           workspaceId: payload.workspaceId,
           title: payload.title,
           description: payload.description,

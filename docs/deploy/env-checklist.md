@@ -12,6 +12,6 @@
 4. Run `npm --prefix apps/web run build`.
 
 ## Common Errors
-- `UNAUTHORIZED`: missing `x-user-id` in API requests.
+- `UNAUTHORIZED`: Supabase 세션이 없거나 만료됨.
 - `FORBIDDEN`: user does not belong to the target workspace.
 - `INTERNAL_ERROR`: malformed payload or missing environment variable.

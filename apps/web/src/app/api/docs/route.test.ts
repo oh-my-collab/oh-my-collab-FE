@@ -7,16 +7,20 @@ import { createDocsHandlers } from "./route";
 describe("docs api", () => {
   it("creates a doc and lists docs only for requested workspace", async () => {
     const store = createInMemoryCollabStore();
-    const wsA = store.createWorkspaceWithOwner({
-      name: "Team A",
-      ownerUserId: "user-a",
-    }).workspace;
-    const wsB = store.createWorkspaceWithOwner({
-      name: "Team B",
-      ownerUserId: "user-b",
-    }).workspace;
+    const wsA = (
+      await store.createWorkspaceWithOwner({
+        name: "Team A",
+        ownerUserId: "user-a",
+      })
+    ).workspace;
+    const wsB = (
+      await store.createWorkspaceWithOwner({
+        name: "Team B",
+        ownerUserId: "user-b",
+      })
+    ).workspace;
 
-    store.createDoc({
+    await store.createDoc({
       workspaceId: wsB.id,
       title: "B doc",
       content: "private",
@@ -26,7 +30,7 @@ describe("docs api", () => {
 
     const { GET, POST } = createDocsHandlers({
       getUserId: async () => "user-a",
-      store,
+      getStore: async () => store,
     });
 
     const createReq = new Request("http://localhost/api/docs", {

@@ -25,7 +25,5 @@ Send a `POST /api/workspaces` request with:
 ```json
 { "name": "My Capstone Team" }
 ```
-Include a valid user header:
-```text
-x-user-id: <user-id>
-```
+The API now uses Supabase Auth session cookies.  
+Sign in first, then call the endpoint from the same browser session.
