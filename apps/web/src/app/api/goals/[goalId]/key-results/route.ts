@@ -1,7 +1,8 @@
 import { z } from "zod";
 
-import { getRequestUserId } from "@/lib/auth/request-user";
-import { collabStore, type CollabStore } from "@/lib/data/collab-store";
+import { getSessionUserId } from "@/lib/auth/session-user";
+import { type CollabStore } from "@/lib/data/collab-store";
+import { getRuntimeCollabStore } from "@/lib/data/store-provider";
 
 const createKeyResultSchema = z.object({
   workspaceId: z.string().min(1),
@@ -19,16 +20,20 @@ const updateProgressSchema = z.object({
 
 type GoalKeyResultDeps = {
   getUserId: (request: Request) => Promise<string>;
-  store: CollabStore;
+  getStore: () => Promise<CollabStore> | CollabStore;
 };
 
 const defaultDeps: GoalKeyResultDeps = {
-  getUserId: getRequestUserId,
-  store: collabStore,
+  getUserId: (request) => getSessionUserId(request),
+  getStore: () => getRuntimeCollabStore(),
 };
 
-function ensureWorkspaceAccess(store: CollabStore, workspaceId: string, userId: string) {
-  if (!store.isWorkspaceMember(workspaceId, userId)) {
+async function ensureWorkspaceAccess(
+  store: CollabStore,
+  workspaceId: string,
+  userId: string
+) {
+  if (!(await store.isWorkspaceMember(workspaceId, userId))) {
     throw new Error("FORBIDDEN");
   }
 }
@@ -51,11 +56,12 @@ export function createGoalKeyResultHandlers(deps: GoalKeyResultDeps) {
     POST: async (request: Request, context: { params: Promise<{ goalId: string }> }) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const payload = createKeyResultSchema.parse(await request.json());
-        ensureWorkspaceAccess(deps.store, payload.workspaceId, userId);
+        await ensureWorkspaceAccess(store, payload.workspaceId, userId);
         const { goalId } = await context.params;
 
-        const keyResult = deps.store.createKeyResult({
+        const keyResult = await store.createKeyResult({
           goalId,
           workspaceId: payload.workspaceId,
           title: payload.title,
@@ -74,10 +80,11 @@ export function createGoalKeyResultHandlers(deps: GoalKeyResultDeps) {
     PATCH: async (request: Request) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const payload = updateProgressSchema.parse(await request.json());
-        ensureWorkspaceAccess(deps.store, payload.workspaceId, userId);
+        await ensureWorkspaceAccess(store, payload.workspaceId, userId);
 
-        const keyResult = deps.store.updateKeyResultProgress({
+        const keyResult = await store.updateKeyResultProgress({
           keyResultId: payload.keyResultId,
           workspaceId: payload.workspaceId,
           progress: payload.progress,

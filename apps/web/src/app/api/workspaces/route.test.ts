@@ -1,23 +1,15 @@
 import { describe, expect, it } from "vitest";
 
+import { createInMemoryCollabStore } from "@/lib/data/collab-store";
+
 import { createPostWorkspaceHandler } from "./route";
 
 describe("POST /api/workspaces", () => {
   it("creates workspace and owner membership", async () => {
+    const store = createInMemoryCollabStore();
     const postWorkspace = createPostWorkspaceHandler({
       getUserId: async () => "user-1",
-      createWorkspaceWithOwner: async ({ name, ownerUserId }) => ({
-        workspace: {
-          id: "ws-1",
-          name,
-          createdBy: ownerUserId,
-        },
-        membership: {
-          workspaceId: "ws-1",
-          userId: ownerUserId,
-          role: "owner",
-        },
-      }),
+      getStore: async () => store,
     });
 
     const req = new Request("http://localhost/api/workspaces", {

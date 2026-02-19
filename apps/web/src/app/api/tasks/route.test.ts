@@ -8,14 +8,16 @@ import { createTaskHandlers } from "./route";
 describe("tasks api", () => {
   it("creates task, moves status, and lists tasks by workspace", async () => {
     const store = createInMemoryCollabStore();
-    const ws = store.createWorkspaceWithOwner({
-      name: "Task Team",
-      ownerUserId: "user-a",
-    }).workspace;
+    const ws = (
+      await store.createWorkspaceWithOwner({
+        name: "Task Team",
+        ownerUserId: "user-a",
+      })
+    ).workspace;
 
     const handlers = createTaskHandlers({
       getUserId: async () => "user-a",
-      store,
+      getStore: async () => store,
     });
 
     const createReq = new Request("http://localhost/api/tasks", {
@@ -35,7 +37,7 @@ describe("tasks api", () => {
 
     const patchHandlers = createTaskByIdHandlers({
       getUserId: async () => "user-a",
-      store,
+      getStore: async () => store,
     });
 
     const patchReq = new Request(

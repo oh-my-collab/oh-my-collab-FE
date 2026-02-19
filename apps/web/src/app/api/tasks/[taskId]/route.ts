@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-import { getRequestUserId } from "@/lib/auth/request-user";
+import { getSessionUserId } from "@/lib/auth/session-user";
 import {
-  collabStore,
   type CollabStore,
   type TaskPriority,
   type TaskStatus,
 } from "@/lib/data/collab-store";
+import { getRuntimeCollabStore } from "@/lib/data/store-provider";
 
 const updateTaskSchema = z.object({
   workspaceId: z.string().min(1),
@@ -23,12 +23,12 @@ const updateTaskSchema = z.object({
 
 type TaskByIdDeps = {
   getUserId: (request: Request) => Promise<string>;
-  store: CollabStore;
+  getStore: () => Promise<CollabStore> | CollabStore;
 };
 
 const defaultDeps: TaskByIdDeps = {
-  getUserId: getRequestUserId,
-  store: collabStore,
+  getUserId: (request) => getSessionUserId(request),
+  getStore: () => getRuntimeCollabStore(),
 };
 
 function getWorkspaceIdFromRequest(request: Request) {
@@ -37,8 +37,12 @@ function getWorkspaceIdFromRequest(request: Request) {
   return workspaceId;
 }
 
-function ensureWorkspaceAccess(store: CollabStore, workspaceId: string, userId: string) {
-  if (!store.isWorkspaceMember(workspaceId, userId)) {
+async function ensureWorkspaceAccess(
+  store: CollabStore,
+  workspaceId: string,
+  userId: string
+) {
+  if (!(await store.isWorkspaceMember(workspaceId, userId))) {
     throw new Error("FORBIDDEN");
   }
 }
@@ -64,11 +68,12 @@ export function createTaskByIdHandlers(deps: TaskByIdDeps) {
     PATCH: async (request: Request, context: { params: Promise<{ taskId: string }> }) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const payload = updateTaskSchema.parse(await request.json());
-        ensureWorkspaceAccess(deps.store, payload.workspaceId, userId);
+        await ensureWorkspaceAccess(store, payload.workspaceId, userId);
         const { taskId } = await context.params;
 
-        const task = deps.store.updateTask({
+        const task = await store.updateTask({
           taskId,
           workspaceId: payload.workspaceId,
           userId,
@@ -93,11 +98,12 @@ export function createTaskByIdHandlers(deps: TaskByIdDeps) {
     DELETE: async (request: Request, context: { params: Promise<{ taskId: string }> }) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const workspaceId = getWorkspaceIdFromRequest(request);
-        ensureWorkspaceAccess(deps.store, workspaceId, userId);
+        await ensureWorkspaceAccess(store, workspaceId, userId);
         const { taskId } = await context.params;
 
-        const deleted = deps.store.deleteTask(workspaceId, taskId);
+        const deleted = await store.deleteTask(workspaceId, taskId);
         if (!deleted) return Response.json({ message: "NOT_FOUND" }, { status: 404 });
         return Response.json({ success: true }, { status: 200 });
       } catch (error) {

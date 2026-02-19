@@ -8,14 +8,16 @@ import { createGoalHandlers } from "./route";
 describe("goals api", () => {
   it("creates goal, adds key result, and updates weekly progress", async () => {
     const store = createInMemoryCollabStore();
-    const ws = store.createWorkspaceWithOwner({
-      name: "Goals Team",
-      ownerUserId: "user-a",
-    }).workspace;
+    const ws = (
+      await store.createWorkspaceWithOwner({
+        name: "Goals Team",
+        ownerUserId: "user-a",
+      })
+    ).workspace;
 
     const goalHandlers = createGoalHandlers({
       getUserId: async () => "user-a",
-      store,
+      getStore: async () => store,
     });
 
     const createGoalReq = new Request("http://localhost/api/goals", {
@@ -32,7 +34,7 @@ describe("goals api", () => {
 
     const krHandlers = createGoalKeyResultHandlers({
       getUserId: async () => "user-a",
-      store,
+      getStore: async () => store,
     });
 
     const createKrReq = new Request(

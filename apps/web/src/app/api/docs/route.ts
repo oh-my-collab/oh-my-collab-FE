@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-import { getRequestUserId } from "@/lib/auth/request-user";
+import { getSessionUserId } from "@/lib/auth/session-user";
 import {
-  collabStore,
   type CollabStore,
   type DocTemplateKey,
 } from "@/lib/data/collab-store";
+import { getRuntimeCollabStore } from "@/lib/data/store-provider";
 
 const createDocSchema = z.object({
   workspaceId: z.string().min(1),
@@ -18,12 +18,12 @@ const createDocSchema = z.object({
 
 type DocsDeps = {
   getUserId: (request: Request) => Promise<string>;
-  store: CollabStore;
+  getStore: () => Promise<CollabStore> | CollabStore;
 };
 
 const defaultDeps: DocsDeps = {
-  getUserId: getRequestUserId,
-  store: collabStore,
+  getUserId: (request) => getSessionUserId(request),
+  getStore: () => getRuntimeCollabStore(),
 };
 
 function getWorkspaceIdFromUrl(url: string) {
@@ -32,8 +32,12 @@ function getWorkspaceIdFromUrl(url: string) {
   return workspaceId;
 }
 
-function ensureWorkspaceAccess(store: CollabStore, workspaceId: string, userId: string) {
-  if (!store.isWorkspaceMember(workspaceId, userId)) {
+async function ensureWorkspaceAccess(
+  store: CollabStore,
+  workspaceId: string,
+  userId: string
+) {
+  if (!(await store.isWorkspaceMember(workspaceId, userId))) {
     throw new Error("FORBIDDEN");
   }
 }
@@ -59,10 +63,11 @@ export function createDocsHandlers(deps: DocsDeps) {
     GET: async (request: Request) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const workspaceId = getWorkspaceIdFromUrl(request.url);
-        ensureWorkspaceAccess(deps.store, workspaceId, userId);
+        await ensureWorkspaceAccess(store, workspaceId, userId);
 
-        const docs = deps.store.listDocsByWorkspace(workspaceId);
+        const docs = await store.listDocsByWorkspace(workspaceId);
         return Response.json({ docs }, { status: 200 });
       } catch (error) {
         return handleError(error);
@@ -72,10 +77,11 @@ export function createDocsHandlers(deps: DocsDeps) {
     POST: async (request: Request) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const payload = createDocSchema.parse(await request.json());
-        ensureWorkspaceAccess(deps.store, payload.workspaceId, userId);
+        await ensureWorkspaceAccess(store, payload.workspaceId, userId);
 
-        const doc = deps.store.createDoc({
+        const doc = await store.createDoc({
           workspaceId: payload.workspaceId,
           title: payload.title,
           content: payload.content,

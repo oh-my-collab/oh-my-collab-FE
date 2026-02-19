@@ -1,14 +1,15 @@
-import { getRequestUserId } from "@/lib/auth/request-user";
-import { collabStore, type CollabStore } from "@/lib/data/collab-store";
+import { getSessionUserId } from "@/lib/auth/session-user";
+import { type CollabStore } from "@/lib/data/collab-store";
+import { getRuntimeCollabStore } from "@/lib/data/store-provider";
 
 type InsightsDeps = {
   getUserId: (request: Request) => Promise<string>;
-  store: CollabStore;
+  getStore: () => Promise<CollabStore> | CollabStore;
 };
 
 const defaultDeps: InsightsDeps = {
-  getUserId: getRequestUserId,
-  store: collabStore,
+  getUserId: (request) => getSessionUserId(request),
+  getStore: () => getRuntimeCollabStore(),
 };
 
 function getWorkspaceIdFromUrl(url: string) {
@@ -17,8 +18,12 @@ function getWorkspaceIdFromUrl(url: string) {
   return workspaceId;
 }
 
-function ensureWorkspaceAccess(store: CollabStore, workspaceId: string, userId: string) {
-  if (!store.isWorkspaceMember(workspaceId, userId)) {
+async function ensureWorkspaceAccess(
+  store: CollabStore,
+  workspaceId: string,
+  userId: string
+) {
+  if (!(await store.isWorkspaceMember(workspaceId, userId))) {
     throw new Error("FORBIDDEN");
   }
 }
@@ -41,9 +46,10 @@ export function createInsightsHandlers(deps: InsightsDeps) {
     GET: async (request: Request) => {
       try {
         const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
         const workspaceId = getWorkspaceIdFromUrl(request.url);
-        ensureWorkspaceAccess(deps.store, workspaceId, userId);
-        const summary = deps.store.getInsights(workspaceId);
+        await ensureWorkspaceAccess(store, workspaceId, userId);
+        const summary = await store.getInsights(workspaceId);
         return Response.json(summary, { status: 200 });
       } catch (error) {
         return handleError(error);

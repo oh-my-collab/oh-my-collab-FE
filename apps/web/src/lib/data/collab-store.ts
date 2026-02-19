@@ -105,12 +105,12 @@ type StoreState = {
   counters: Record<string, number>;
 };
 
-type CreateWorkspaceInput = {
+export type CreateWorkspaceInput = {
   name: string;
   ownerUserId: string;
 };
 
-type CreateDocInput = {
+export type CreateDocInput = {
   workspaceId: string;
   title: string;
   content: string;
@@ -118,7 +118,7 @@ type CreateDocInput = {
   userId: string;
 };
 
-type UpdateDocInput = {
+export type UpdateDocInput = {
   docId: string;
   workspaceId: string;
   title?: string;
@@ -126,7 +126,7 @@ type UpdateDocInput = {
   userId: string;
 };
 
-type CreateTaskInput = {
+export type CreateTaskInput = {
   workspaceId: string;
   title: string;
   description?: string;
@@ -139,7 +139,7 @@ type CreateTaskInput = {
   createdBy: string;
 };
 
-type UpdateTaskInput = {
+export type UpdateTaskInput = {
   taskId: string;
   workspaceId: string;
   userId: string;
@@ -154,7 +154,7 @@ type UpdateTaskInput = {
   repeat?: "none" | "daily" | "weekly";
 };
 
-type CreateGoalInput = {
+export type CreateGoalInput = {
   workspaceId: string;
   title: string;
   description?: string;
@@ -162,7 +162,7 @@ type CreateGoalInput = {
   userId: string;
 };
 
-type CreateKeyResultInput = {
+export type CreateKeyResultInput = {
   goalId: string;
   workspaceId: string;
   title: string;
@@ -171,13 +171,15 @@ type CreateKeyResultInput = {
   userId: string;
 };
 
-type UpdateKeyResultProgressInput = {
+export type UpdateKeyResultProgressInput = {
   keyResultId: string;
   workspaceId: string;
   progress: number;
   currentValue?: number;
   userId: string;
 };
+
+export type MaybePromise<T> = T | Promise<T>;
 
 function createState(): StoreState {
   return {
@@ -230,31 +232,46 @@ export type InsightsSummary = {
 };
 
 export type CollabStore = {
-  createWorkspaceWithOwner: (input: CreateWorkspaceInput) => {
+  createWorkspaceWithOwner: (input: CreateWorkspaceInput) => MaybePromise<{
     workspace: Workspace;
     membership: WorkspaceMembership;
-  };
-  isWorkspaceMember: (workspaceId: string, userId: string) => boolean;
-  listMembershipsByWorkspace: (workspaceId: string) => WorkspaceMembership[];
-  createDoc: (input: CreateDocInput) => Doc;
-  listDocsByWorkspace: (workspaceId: string) => Doc[];
-  getDocById: (workspaceId: string, docId: string) => Doc | undefined;
-  updateDoc: (input: UpdateDocInput) => Doc | undefined;
-  deleteDoc: (workspaceId: string, docId: string) => boolean;
-  createTask: (input: CreateTaskInput) => Task;
-  listTasksByWorkspace: (workspaceId: string) => Task[];
-  getTaskById: (workspaceId: string, taskId: string) => Task | undefined;
-  updateTask: (input: UpdateTaskInput) => Task | undefined;
-  deleteTask: (workspaceId: string, taskId: string) => boolean;
-  createGoal: (input: CreateGoalInput) => Goal;
-  listGoalsByWorkspace: (workspaceId: string) => Goal[];
-  createKeyResult: (input: CreateKeyResultInput) => KeyResult | undefined;
-  listKeyResultsByGoal: (workspaceId: string, goalId: string) => KeyResult[];
+  }>;
+  isWorkspaceMember: (workspaceId: string, userId: string) => MaybePromise<boolean>;
+  listMembershipsByWorkspace: (
+    workspaceId: string
+  ) => MaybePromise<WorkspaceMembership[]>;
+  createDoc: (input: CreateDocInput) => MaybePromise<Doc>;
+  listDocsByWorkspace: (workspaceId: string) => MaybePromise<Doc[]>;
+  getDocById: (
+    workspaceId: string,
+    docId: string
+  ) => MaybePromise<Doc | undefined>;
+  updateDoc: (input: UpdateDocInput) => MaybePromise<Doc | undefined>;
+  deleteDoc: (workspaceId: string, docId: string) => MaybePromise<boolean>;
+  createTask: (input: CreateTaskInput) => MaybePromise<Task>;
+  listTasksByWorkspace: (workspaceId: string) => MaybePromise<Task[]>;
+  getTaskById: (
+    workspaceId: string,
+    taskId: string
+  ) => MaybePromise<Task | undefined>;
+  updateTask: (input: UpdateTaskInput) => MaybePromise<Task | undefined>;
+  deleteTask: (workspaceId: string, taskId: string) => MaybePromise<boolean>;
+  createGoal: (input: CreateGoalInput) => MaybePromise<Goal>;
+  listGoalsByWorkspace: (workspaceId: string) => MaybePromise<Goal[]>;
+  createKeyResult: (
+    input: CreateKeyResultInput
+  ) => MaybePromise<KeyResult | undefined>;
+  listKeyResultsByGoal: (
+    workspaceId: string,
+    goalId: string
+  ) => MaybePromise<KeyResult[]>;
   updateKeyResultProgress: (
     input: UpdateKeyResultProgressInput
-  ) => KeyResult | undefined;
-  addActivityEvent: (event: Omit<ActivityEvent, "id" | "createdAt">) => void;
-  getInsights: (workspaceId: string, now?: Date) => InsightsSummary;
+  ) => MaybePromise<KeyResult | undefined>;
+  addActivityEvent: (
+    event: Omit<ActivityEvent, "id" | "createdAt">
+  ) => MaybePromise<void>;
+  getInsights: (workspaceId: string, now?: Date) => MaybePromise<InsightsSummary>;
 };
 
 export function createInMemoryCollabStore(
