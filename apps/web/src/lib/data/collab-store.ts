@@ -1,4 +1,5 @@
-type Role = "owner" | "member";
+type Role = "owner" | "admin" | "member";
+type AdminManagedRole = "admin" | "member";
 
 export type Workspace = {
   id: string;
@@ -12,6 +13,67 @@ export type WorkspaceMembership = {
   userId: string;
   role: Role;
   joinedAt: string;
+};
+
+export type PerformanceCycleStatus = "draft" | "open" | "closed";
+
+export type PerformanceWeights = {
+  execution: number;
+  docs: number;
+  goals: number;
+  collaboration: number;
+};
+
+export type PerformanceCycle = {
+  id: string;
+  workspaceId: string;
+  title: string;
+  periodStart: string;
+  periodEnd: string;
+  status: PerformanceCycleStatus;
+  weights: PerformanceWeights;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EvidenceMetricSet = {
+  execution: number;
+  docs: number;
+  goals: number;
+  collaboration: number;
+};
+
+export type PerformanceEvidenceSnapshot = {
+  periodStart: string;
+  periodEnd: string;
+  raw: EvidenceMetricSet;
+  normalized: EvidenceMetricSet;
+  highlights: string[];
+};
+
+export type PerformanceReview = {
+  id: string;
+  cycleId: string;
+  workspaceId: string;
+  userId: string;
+  evidenceSnapshot: PerformanceEvidenceSnapshot;
+  scorePreview: number;
+  managerNote?: string;
+  finalRating?: string;
+  lockedAt?: string;
+  updatedBy: string;
+  updatedAt: string;
+};
+
+export type AdminAuditLog = {
+  id: string;
+  workspaceId: string;
+  actorUserId: string;
+  action: string;
+  targetUserId?: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
 };
 
 export type DocTemplateKey =
@@ -102,6 +164,9 @@ type StoreState = {
   goals: Goal[];
   keyResults: KeyResult[];
   activityEvents: ActivityEvent[];
+  performanceCycles: PerformanceCycle[];
+  performanceReviews: PerformanceReview[];
+  adminAuditLogs: AdminAuditLog[];
   counters: Record<string, number>;
 };
 
@@ -179,6 +244,49 @@ export type UpdateKeyResultProgressInput = {
   userId: string;
 };
 
+export type CreatePerformanceCycleInput = {
+  workspaceId: string;
+  title: string;
+  periodStart: string;
+  periodEnd: string;
+  status?: PerformanceCycleStatus;
+  weights: PerformanceWeights;
+  actorUserId: string;
+};
+
+export type UpdatePerformanceCycleInput = {
+  cycleId: string;
+  workspaceId: string;
+  title?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  status?: PerformanceCycleStatus;
+  weights?: PerformanceWeights;
+  actorUserId: string;
+};
+
+export type UpdateWorkspaceMembershipRoleInput = {
+  workspaceId: string;
+  targetUserId: string;
+  role: AdminManagedRole;
+  actorUserId: string;
+};
+
+export type UpsertPerformanceReviewInput = {
+  workspaceId: string;
+  cycleId: string;
+  userId: string;
+  managerNote?: string;
+  finalRating?: string;
+  lock?: boolean;
+  updatedBy: string;
+};
+
+export type BuildEvidencePackResult = {
+  evidencePack: PerformanceEvidenceSnapshot;
+  scorePreview: number;
+};
+
 export type MaybePromise<T> = T | Promise<T>;
 
 function createState(): StoreState {
@@ -190,6 +298,9 @@ function createState(): StoreState {
     goals: [],
     keyResults: [],
     activityEvents: [],
+    performanceCycles: [],
+    performanceReviews: [],
+    adminAuditLogs: [],
     counters: {
       ws: 0,
       doc: 0,
@@ -197,6 +308,9 @@ function createState(): StoreState {
       goal: 0,
       kr: 0,
       event: 0,
+      cycle: 0,
+      review: 0,
+      audit: 0,
     },
   };
 }
@@ -213,6 +327,42 @@ function makeId(prefix: keyof StoreState["counters"], state: StoreState) {
 function clampProgress(value: number) {
   if (Number.isNaN(value)) return 0;
   return Math.max(0, Math.min(100, value));
+}
+
+function round(value: number, precision = 4) {
+  const factor = 10 ** precision;
+  return Math.round(value * factor) / factor;
+}
+
+function normalizeWeights(input: PerformanceWeights): PerformanceWeights {
+  const execution = Math.max(0, input.execution);
+  const docs = Math.max(0, input.docs);
+  const goals = Math.max(0, input.goals);
+  const collaboration = Math.max(0, input.collaboration);
+  const sum = execution + docs + goals + collaboration;
+
+  if (sum === 0) {
+    return {
+      execution: 40,
+      docs: 20,
+      goals: 25,
+      collaboration: 15,
+    };
+  }
+
+  return {
+    execution: round((execution / sum) * 100, 2),
+    docs: round((docs / sum) * 100, 2),
+    goals: round((goals / sum) * 100, 2),
+    collaboration: round((collaboration / sum) * 100, 2),
+  };
+}
+
+function inPeriod(iso: string, startIso: string, endIso: string) {
+  const timestamp = new Date(iso).getTime();
+  const start = new Date(startIso).getTime();
+  const end = new Date(endIso).getTime();
+  return timestamp >= start && timestamp <= end;
 }
 
 export type InsightsSummary = {
@@ -237,9 +387,18 @@ export type CollabStore = {
     membership: WorkspaceMembership;
   }>;
   isWorkspaceMember: (workspaceId: string, userId: string) => MaybePromise<boolean>;
+  getWorkspaceMembership: (
+    workspaceId: string,
+    userId: string
+  ) => MaybePromise<WorkspaceMembership | undefined>;
+  isWorkspaceAdmin: (workspaceId: string, userId: string) => MaybePromise<boolean>;
   listMembershipsByWorkspace: (
     workspaceId: string
   ) => MaybePromise<WorkspaceMembership[]>;
+  listMembershipsByUser: (userId: string) => MaybePromise<WorkspaceMembership[]>;
+  updateWorkspaceMembershipRole: (
+    input: UpdateWorkspaceMembershipRoleInput
+  ) => MaybePromise<WorkspaceMembership | undefined>;
   createDoc: (input: CreateDocInput) => MaybePromise<Doc>;
   listDocsByWorkspace: (workspaceId: string) => MaybePromise<Doc[]>;
   getDocById: (
@@ -268,6 +427,40 @@ export type CollabStore = {
   updateKeyResultProgress: (
     input: UpdateKeyResultProgressInput
   ) => MaybePromise<KeyResult | undefined>;
+  createPerformanceCycle: (
+    input: CreatePerformanceCycleInput
+  ) => MaybePromise<PerformanceCycle>;
+  listPerformanceCyclesByWorkspace: (
+    workspaceId: string
+  ) => MaybePromise<PerformanceCycle[]>;
+  getPerformanceCycleById: (
+    workspaceId: string,
+    cycleId: string
+  ) => MaybePromise<PerformanceCycle | undefined>;
+  updatePerformanceCycle: (
+    input: UpdatePerformanceCycleInput
+  ) => MaybePromise<PerformanceCycle | undefined>;
+  buildEvidencePack: (
+    workspaceId: string,
+    cycleId: string,
+    userId: string
+  ) => MaybePromise<BuildEvidencePackResult | undefined>;
+  getPerformanceReview: (
+    workspaceId: string,
+    cycleId: string,
+    userId: string
+  ) => MaybePromise<PerformanceReview | undefined>;
+  listPerformanceReviewsByCycle: (
+    workspaceId: string,
+    cycleId: string
+  ) => MaybePromise<PerformanceReview[]>;
+  upsertPerformanceReview: (
+    input: UpsertPerformanceReviewInput
+  ) => MaybePromise<PerformanceReview | undefined>;
+  addAdminAuditLog: (
+    log: Omit<AdminAuditLog, "id" | "createdAt">
+  ) => MaybePromise<void>;
+  listAdminAuditLogs: (workspaceId: string) => MaybePromise<AdminAuditLog[]>;
   addActivityEvent: (
     event: Omit<ActivityEvent, "id" | "createdAt">
   ) => MaybePromise<void>;
@@ -288,6 +481,141 @@ export function createInMemoryCollabStore(
       createdAt: nowIso(),
       ...event,
     });
+  };
+
+  const addAdminAuditLog: CollabStore["addAdminAuditLog"] = (log) => {
+    state.adminAuditLogs.push({
+      id: makeId("audit", state),
+      createdAt: nowIso(),
+      ...log,
+    });
+  };
+
+  const findWorkspaceMembership = (workspaceId: string, userId: string) =>
+    state.memberships.find(
+      (membership) =>
+        membership.workspaceId === workspaceId && membership.userId === userId
+    );
+
+  const getWorkspaceMembership: CollabStore["getWorkspaceMembership"] = (
+    workspaceId,
+    userId
+  ) => findWorkspaceMembership(workspaceId, userId);
+
+  const isWorkspaceAdmin: CollabStore["isWorkspaceAdmin"] = (
+    workspaceId,
+    userId
+  ) => {
+    const membership = findWorkspaceMembership(workspaceId, userId);
+    return membership?.role === "owner" || membership?.role === "admin";
+  };
+
+  const resolveEvidenceByMember = (workspaceId: string, cycle: PerformanceCycle) => {
+    const members = state.memberships.filter(
+      (membership) => membership.workspaceId === workspaceId
+    );
+
+    const rawByMember = members.map((membership) => {
+      const userId = membership.userId;
+
+      const execution = state.tasks
+        .filter(
+          (task) =>
+            task.workspaceId === workspaceId &&
+            task.status === "done" &&
+            task.assigneeId === userId &&
+            inPeriod(task.updatedAt, cycle.periodStart, cycle.periodEnd)
+        )
+        .reduce((sum, task) => sum + Math.max(1, task.difficulty), 0);
+
+      const docs = state.docs.filter(
+        (doc) =>
+          doc.workspaceId === workspaceId &&
+          doc.updatedBy === userId &&
+          inPeriod(doc.updatedAt, cycle.periodStart, cycle.periodEnd)
+      ).length;
+
+      const goals = state.keyResults.filter(
+        (kr) =>
+          kr.workspaceId === workspaceId &&
+          kr.updatedBy === userId &&
+          inPeriod(kr.updatedAt, cycle.periodStart, cycle.periodEnd)
+      ).length;
+
+      const collaboration = state.activityEvents.filter(
+        (event) =>
+          event.workspaceId === workspaceId &&
+          event.actorUserId === userId &&
+          ["comment", "review", "blocker_resolved"].includes(event.type) &&
+          inPeriod(event.createdAt, cycle.periodStart, cycle.periodEnd)
+      ).length;
+
+      return {
+        userId,
+        raw: {
+          execution,
+          docs,
+          goals,
+          collaboration,
+        },
+      };
+    });
+
+    const maxExecution = Math.max(1, ...rawByMember.map((item) => item.raw.execution));
+    const maxDocs = Math.max(1, ...rawByMember.map((item) => item.raw.docs));
+    const maxGoals = Math.max(1, ...rawByMember.map((item) => item.raw.goals));
+    const maxCollaboration = Math.max(
+      1,
+      ...rawByMember.map((item) => item.raw.collaboration)
+    );
+
+    return rawByMember.map((item) => ({
+      userId: item.userId,
+      raw: item.raw,
+      normalized: {
+        execution: round(item.raw.execution / maxExecution, 4),
+        docs: round(item.raw.docs / maxDocs, 4),
+        goals: round(item.raw.goals / maxGoals, 4),
+        collaboration: round(item.raw.collaboration / maxCollaboration, 4),
+      },
+    }));
+  };
+
+  const buildEvidencePackInternal = (
+    workspaceId: string,
+    cycleId: string,
+    userId: string
+  ): BuildEvidencePackResult | undefined => {
+    const cycle = state.performanceCycles.find(
+      (item) => item.workspaceId === workspaceId && item.id === cycleId
+    );
+    if (!cycle) return undefined;
+
+    const evidenceByMember = resolveEvidenceByMember(workspaceId, cycle);
+    const matched = evidenceByMember.find((item) => item.userId === userId);
+    if (!matched) return undefined;
+
+    const scorePreview =
+      cycle.weights.execution * matched.normalized.execution +
+      cycle.weights.docs * matched.normalized.docs +
+      cycle.weights.goals * matched.normalized.goals +
+      cycle.weights.collaboration * matched.normalized.collaboration;
+
+    return {
+      evidencePack: {
+        periodStart: cycle.periodStart,
+        periodEnd: cycle.periodEnd,
+        raw: matched.raw,
+        normalized: matched.normalized,
+        highlights: [
+          `완료 난이도 점수 ${matched.raw.execution}`,
+          `문서 업데이트 ${matched.raw.docs}건`,
+          `목표/KR 업데이트 ${matched.raw.goals}건`,
+          `협업 이벤트 ${matched.raw.collaboration}건`,
+        ],
+      },
+      scorePreview: round(scorePreview, 2),
+    };
   };
 
   return {
@@ -318,8 +646,46 @@ export function createInMemoryCollabStore(
       );
     },
 
+    getWorkspaceMembership,
+
+    isWorkspaceAdmin,
+
     listMembershipsByWorkspace(workspaceId) {
       return state.memberships.filter((m) => m.workspaceId === workspaceId);
+    },
+
+    listMembershipsByUser(userId) {
+      return state.memberships.filter((m) => m.userId === userId);
+    },
+
+    updateWorkspaceMembershipRole({
+      workspaceId,
+      targetUserId,
+      role,
+      actorUserId,
+    }) {
+      const actorMembership = findWorkspaceMembership(workspaceId, actorUserId);
+      if (!actorMembership || actorMembership.role !== "owner") {
+        throw new Error("FORBIDDEN");
+      }
+
+      const membership = findWorkspaceMembership(workspaceId, targetUserId);
+      if (!membership) return undefined;
+      if (membership.role === "owner") {
+        throw new Error("INVALID_ROLE_CHANGE");
+      }
+
+      membership.role = role;
+
+      addAdminAuditLog({
+        workspaceId,
+        actorUserId,
+        action: "membership_role_updated",
+        targetUserId,
+        payload: { role },
+      });
+
+      return membership;
     },
 
     createDoc({ workspaceId, title, content, templateKey, userId }) {
@@ -540,6 +906,177 @@ export function createInMemoryCollabStore(
 
       addActivityEvent({ workspaceId, actorUserId: userId, type: "goal_updated" });
       return keyResult;
+    },
+
+    createPerformanceCycle({
+      workspaceId,
+      title,
+      periodStart,
+      periodEnd,
+      status = "draft",
+      weights,
+      actorUserId,
+    }) {
+      const cycle: PerformanceCycle = {
+        id: makeId("cycle", state),
+        workspaceId,
+        title,
+        periodStart,
+        periodEnd,
+        status,
+        weights: normalizeWeights(weights),
+        createdBy: actorUserId,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+      };
+      state.performanceCycles.push(cycle);
+
+      addAdminAuditLog({
+        workspaceId,
+        actorUserId,
+        action: "performance_cycle_created",
+        payload: { cycleId: cycle.id, title: cycle.title },
+      });
+
+      return cycle;
+    },
+
+    listPerformanceCyclesByWorkspace(workspaceId) {
+      return state.performanceCycles
+        .filter((cycle) => cycle.workspaceId === workspaceId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    },
+
+    getPerformanceCycleById(workspaceId, cycleId) {
+      return state.performanceCycles.find(
+        (cycle) => cycle.workspaceId === workspaceId && cycle.id === cycleId
+      );
+    },
+
+    updatePerformanceCycle({
+      cycleId,
+      workspaceId,
+      title,
+      periodStart,
+      periodEnd,
+      status,
+      weights,
+      actorUserId,
+    }) {
+      const cycle = state.performanceCycles.find(
+        (item) => item.workspaceId === workspaceId && item.id === cycleId
+      );
+      if (!cycle) return undefined;
+
+      if (typeof title === "string") cycle.title = title;
+      if (typeof periodStart === "string") cycle.periodStart = periodStart;
+      if (typeof periodEnd === "string") cycle.periodEnd = periodEnd;
+      if (typeof status === "string") cycle.status = status;
+      if (weights) cycle.weights = normalizeWeights(weights);
+      cycle.updatedAt = nowIso();
+
+      addAdminAuditLog({
+        workspaceId,
+        actorUserId,
+        action: "performance_cycle_updated",
+        payload: { cycleId },
+      });
+
+      return cycle;
+    },
+
+    buildEvidencePack: buildEvidencePackInternal,
+
+    getPerformanceReview(workspaceId, cycleId, userId) {
+      return state.performanceReviews.find(
+        (review) =>
+          review.workspaceId === workspaceId &&
+          review.cycleId === cycleId &&
+          review.userId === userId
+      );
+    },
+
+    listPerformanceReviewsByCycle(workspaceId, cycleId) {
+      return state.performanceReviews
+        .filter(
+          (review) =>
+            review.workspaceId === workspaceId && review.cycleId === cycleId
+        )
+        .sort((a, b) => a.userId.localeCompare(b.userId));
+    },
+
+    upsertPerformanceReview({
+      workspaceId,
+      cycleId,
+      userId,
+      managerNote,
+      finalRating,
+      lock,
+      updatedBy,
+    }) {
+      const evidence = buildEvidencePackInternal(workspaceId, cycleId, userId);
+      if (!evidence) return undefined;
+
+      const existing = state.performanceReviews.find(
+        (review) =>
+          review.workspaceId === workspaceId &&
+          review.cycleId === cycleId &&
+          review.userId === userId
+      );
+
+      if (existing?.lockedAt) {
+        throw new Error("REVIEW_LOCKED");
+      }
+
+      if (existing) {
+        if (typeof managerNote === "string") existing.managerNote = managerNote;
+        if (typeof finalRating === "string") existing.finalRating = finalRating;
+        if (lock) existing.lockedAt = nowIso();
+        existing.evidenceSnapshot = evidence.evidencePack;
+        existing.scorePreview = evidence.scorePreview;
+        existing.updatedBy = updatedBy;
+        existing.updatedAt = nowIso();
+
+        addAdminAuditLog({
+          workspaceId,
+          actorUserId: updatedBy,
+          action: "performance_review_updated",
+          targetUserId: userId,
+          payload: { cycleId, lock: Boolean(lock) },
+        });
+        return existing;
+      }
+
+      const created: PerformanceReview = {
+        id: makeId("review", state),
+        cycleId,
+        workspaceId,
+        userId,
+        evidenceSnapshot: evidence.evidencePack,
+        scorePreview: evidence.scorePreview,
+        managerNote,
+        finalRating,
+        lockedAt: lock ? nowIso() : undefined,
+        updatedBy,
+        updatedAt: nowIso(),
+      };
+      state.performanceReviews.push(created);
+
+      addAdminAuditLog({
+        workspaceId,
+        actorUserId: updatedBy,
+        action: "performance_review_created",
+        targetUserId: userId,
+        payload: { cycleId, lock: Boolean(lock) },
+      });
+
+      return created;
+    },
+
+    addAdminAuditLog,
+
+    listAdminAuditLogs(workspaceId) {
+      return state.adminAuditLogs.filter((log) => log.workspaceId === workspaceId);
     },
 
     addActivityEvent,

@@ -2,7 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type {
   ActivityEvent,
+  AdminAuditLog,
+  BuildEvidencePackResult,
   CollabStore,
+  CreatePerformanceCycleInput,
   CreateDocInput,
   CreateGoalInput,
   CreateKeyResultInput,
@@ -12,10 +15,15 @@ import type {
   Goal,
   InsightsSummary,
   KeyResult,
+  PerformanceCycle,
+  PerformanceReview,
   Task,
+  UpdatePerformanceCycleInput,
   UpdateDocInput,
   UpdateKeyResultProgressInput,
   UpdateTaskInput,
+  UpdateWorkspaceMembershipRoleInput,
+  UpsertPerformanceReviewInput,
   Workspace,
   WorkspaceMembership,
 } from "./collab-store";
@@ -105,6 +113,67 @@ function toKeyResult(row: AnyRow): KeyResult {
   };
 }
 
+function toPerformanceCycle(row: AnyRow): PerformanceCycle {
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    title: String(row.title),
+    periodStart: String(row.period_start),
+    periodEnd: String(row.period_end),
+    status: String(row.status) as PerformanceCycle["status"],
+    weights: {
+      execution: Number((row.weights_json as AnyRow)?.execution ?? 40),
+      docs: Number((row.weights_json as AnyRow)?.docs ?? 20),
+      goals: Number((row.weights_json as AnyRow)?.goals ?? 25),
+      collaboration: Number((row.weights_json as AnyRow)?.collaboration ?? 15),
+    },
+    createdBy: String(row.created_by),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function toPerformanceReview(row: AnyRow): PerformanceReview {
+  return {
+    id: String(row.id),
+    cycleId: String(row.cycle_id),
+    workspaceId: String(row.workspace_id),
+    userId: String(row.user_id),
+    evidenceSnapshot: (row.evidence_snapshot_json as PerformanceReview["evidenceSnapshot"]) ?? {
+      periodStart: "",
+      periodEnd: "",
+      raw: { execution: 0, docs: 0, goals: 0, collaboration: 0 },
+      normalized: { execution: 0, docs: 0, goals: 0, collaboration: 0 },
+      highlights: [],
+    },
+    scorePreview: Number(row.score_preview ?? 0),
+    managerNote: row.manager_note ? String(row.manager_note) : undefined,
+    finalRating: row.final_rating ? String(row.final_rating) : undefined,
+    lockedAt: row.locked_at ? String(row.locked_at) : undefined,
+    updatedBy: String(row.updated_by),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function normalizeWeights(weights: PerformanceCycle["weights"]) {
+  const execution = Math.max(0, Number(weights.execution ?? 0));
+  const docs = Math.max(0, Number(weights.docs ?? 0));
+  const goals = Math.max(0, Number(weights.goals ?? 0));
+  const collaboration = Math.max(0, Number(weights.collaboration ?? 0));
+  const sum = execution + docs + goals + collaboration;
+
+  if (sum === 0) {
+    return { execution: 40, docs: 20, goals: 25, collaboration: 15 };
+  }
+
+  return {
+    execution: Math.round((execution / sum) * 10000) / 100,
+    docs: Math.round((docs / sum) * 10000) / 100,
+    goals: Math.round((goals / sum) * 10000) / 100,
+    collaboration: Math.round((collaboration / sum) * 10000) / 100,
+  };
+}
+
 function normalizeError(error: { message: string } | null, fallback: string) {
   if (!error) return;
   throw new Error(error.message || fallback);
@@ -162,6 +231,22 @@ export function createSupabaseCollabStore(client: SupabaseClient): CollabStore {
       return (count ?? 0) > 0;
     },
 
+    async getWorkspaceMembership(workspaceId: string, userId: string) {
+      const { data, error } = await client
+        .from("workspace_members")
+        .select("workspace_id, user_id, role, joined_at")
+        .eq("workspace_id", workspaceId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      normalizeError(error, "MEMBERSHIP_GET_FAILED");
+      return data ? toMembership(data as AnyRow) : undefined;
+    },
+
+    async isWorkspaceAdmin(workspaceId: string, userId: string) {
+      const membership = await this.getWorkspaceMembership(workspaceId, userId);
+      return membership?.role === "owner" || membership?.role === "admin";
+    },
+
     async listMembershipsByWorkspace(workspaceId: string) {
       const { data, error } = await client
         .from("workspace_members")
@@ -169,6 +254,54 @@ export function createSupabaseCollabStore(client: SupabaseClient): CollabStore {
         .eq("workspace_id", workspaceId);
       normalizeError(error, "MEMBERSHIP_LIST_FAILED");
       return (data ?? []).map((row) => toMembership(row as AnyRow));
+    },
+
+    async listMembershipsByUser(userId: string) {
+      const { data, error } = await client
+        .from("workspace_members")
+        .select("workspace_id, user_id, role, joined_at")
+        .eq("user_id", userId);
+      normalizeError(error, "MEMBERSHIP_LIST_BY_USER_FAILED");
+      return (data ?? []).map((row) => toMembership(row as AnyRow));
+    },
+
+    async updateWorkspaceMembershipRole(input: UpdateWorkspaceMembershipRoleInput) {
+      const actor = await this.getWorkspaceMembership(
+        input.workspaceId,
+        input.actorUserId
+      );
+      if (!actor || actor.role !== "owner") {
+        throw new Error("FORBIDDEN");
+      }
+
+      const targetMembership = await this.getWorkspaceMembership(
+        input.workspaceId,
+        input.targetUserId
+      );
+      if (!targetMembership) return undefined;
+      if (targetMembership.role === "owner") {
+        throw new Error("INVALID_ROLE_CHANGE");
+      }
+
+      const { data, error } = await client
+        .from("workspace_members")
+        .update({ role: input.role })
+        .eq("workspace_id", input.workspaceId)
+        .eq("user_id", input.targetUserId)
+        .select("workspace_id, user_id, role, joined_at")
+        .maybeSingle();
+      normalizeError(error, "MEMBERSHIP_ROLE_UPDATE_FAILED");
+      if (!data) return undefined;
+
+      await this.addAdminAuditLog({
+        workspaceId: input.workspaceId,
+        actorUserId: input.actorUserId,
+        action: "membership_role_updated",
+        targetUserId: input.targetUserId,
+        payload: { role: input.role },
+      });
+
+      return toMembership(data as AnyRow);
     },
 
     async createDoc(input: CreateDocInput) {
@@ -459,6 +592,330 @@ export function createSupabaseCollabStore(client: SupabaseClient): CollabStore {
       });
 
       return toKeyResult(data as AnyRow);
+    },
+
+    async createPerformanceCycle(input: CreatePerformanceCycleInput) {
+      const weights = normalizeWeights(input.weights);
+      const { data, error } = await client
+        .from("performance_cycles")
+        .insert({
+          workspace_id: input.workspaceId,
+          title: input.title,
+          period_start: input.periodStart,
+          period_end: input.periodEnd,
+          status: input.status ?? "draft",
+          weights_json: weights,
+          created_by: input.actorUserId,
+          updated_at: new Date().toISOString(),
+        })
+        .select(
+          "id, workspace_id, title, period_start, period_end, status, weights_json, created_by, created_at, updated_at"
+        )
+        .single();
+      normalizeError(error, "PERFORMANCE_CYCLE_CREATE_FAILED");
+      const cycle = toPerformanceCycle(
+        requireRow(data, "PERFORMANCE_CYCLE_CREATE_FAILED") as AnyRow
+      );
+
+      await this.addAdminAuditLog({
+        workspaceId: input.workspaceId,
+        actorUserId: input.actorUserId,
+        action: "performance_cycle_created",
+        payload: { cycleId: cycle.id, title: cycle.title },
+      });
+
+      return cycle;
+    },
+
+    async listPerformanceCyclesByWorkspace(workspaceId: string) {
+      const { data, error } = await client
+        .from("performance_cycles")
+        .select(
+          "id, workspace_id, title, period_start, period_end, status, weights_json, created_by, created_at, updated_at"
+        )
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false });
+      normalizeError(error, "PERFORMANCE_CYCLE_LIST_FAILED");
+      return (data ?? []).map((row) => toPerformanceCycle(row as AnyRow));
+    },
+
+    async getPerformanceCycleById(workspaceId: string, cycleId: string) {
+      const { data, error } = await client
+        .from("performance_cycles")
+        .select(
+          "id, workspace_id, title, period_start, period_end, status, weights_json, created_by, created_at, updated_at"
+        )
+        .eq("workspace_id", workspaceId)
+        .eq("id", cycleId)
+        .maybeSingle();
+      normalizeError(error, "PERFORMANCE_CYCLE_GET_FAILED");
+      return data ? toPerformanceCycle(data as AnyRow) : undefined;
+    },
+
+    async updatePerformanceCycle(input: UpdatePerformanceCycleInput) {
+      const patch: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+      };
+      if (typeof input.title === "string") patch.title = input.title;
+      if (typeof input.periodStart === "string") patch.period_start = input.periodStart;
+      if (typeof input.periodEnd === "string") patch.period_end = input.periodEnd;
+      if (typeof input.status === "string") patch.status = input.status;
+      if (input.weights) patch.weights_json = normalizeWeights(input.weights);
+
+      const { data, error } = await client
+        .from("performance_cycles")
+        .update(patch)
+        .eq("workspace_id", input.workspaceId)
+        .eq("id", input.cycleId)
+        .select(
+          "id, workspace_id, title, period_start, period_end, status, weights_json, created_by, created_at, updated_at"
+        )
+        .maybeSingle();
+      normalizeError(error, "PERFORMANCE_CYCLE_UPDATE_FAILED");
+      if (!data) return undefined;
+
+      await this.addAdminAuditLog({
+        workspaceId: input.workspaceId,
+        actorUserId: input.actorUserId,
+        action: "performance_cycle_updated",
+        payload: { cycleId: input.cycleId },
+      });
+
+      return toPerformanceCycle(data as AnyRow);
+    },
+
+    async buildEvidencePack(
+      workspaceId: string,
+      cycleId: string,
+      userId: string
+    ): Promise<BuildEvidencePackResult | undefined> {
+      const cycle = await this.getPerformanceCycleById(workspaceId, cycleId);
+      if (!cycle) return undefined;
+
+      const [memberRowsResult, taskRowsResult, docRowsResult, krRowsResult, eventRowsResult] =
+        await Promise.all([
+          client
+            .from("workspace_members")
+            .select("user_id")
+            .eq("workspace_id", workspaceId),
+          client
+            .from("tasks")
+            .select("assignee_id, difficulty, status, updated_at")
+            .eq("workspace_id", workspaceId)
+            .gte("updated_at", cycle.periodStart)
+            .lte("updated_at", cycle.periodEnd),
+          client
+            .from("docs")
+            .select("updated_by, updated_at")
+            .eq("workspace_id", workspaceId)
+            .gte("updated_at", cycle.periodStart)
+            .lte("updated_at", cycle.periodEnd),
+          client
+            .from("goal_key_results")
+            .select("updated_by, updated_at")
+            .eq("workspace_id", workspaceId)
+            .gte("updated_at", cycle.periodStart)
+            .lte("updated_at", cycle.periodEnd),
+          client
+            .from("activity_events")
+            .select("actor_user_id, event_type, created_at")
+            .eq("workspace_id", workspaceId)
+            .gte("created_at", cycle.periodStart)
+            .lte("created_at", cycle.periodEnd),
+        ]);
+
+      normalizeError(memberRowsResult.error, "EVIDENCE_MEMBERS_FAILED");
+      normalizeError(taskRowsResult.error, "EVIDENCE_TASKS_FAILED");
+      normalizeError(docRowsResult.error, "EVIDENCE_DOCS_FAILED");
+      normalizeError(krRowsResult.error, "EVIDENCE_KRS_FAILED");
+      normalizeError(eventRowsResult.error, "EVIDENCE_EVENTS_FAILED");
+
+      const memberIds = ((memberRowsResult.data ?? []) as AnyRow[]).map((row) =>
+        String(row.user_id)
+      );
+      if (!memberIds.includes(userId)) return undefined;
+
+      const tasks = (taskRowsResult.data ?? []) as AnyRow[];
+      const docs = (docRowsResult.data ?? []) as AnyRow[];
+      const krs = (krRowsResult.data ?? []) as AnyRow[];
+      const events = (eventRowsResult.data ?? []) as AnyRow[];
+
+      const rawByMember = memberIds.map((memberId) => {
+        const execution = tasks
+          .filter(
+            (task) =>
+              String(task.status) === "done" &&
+              task.assignee_id &&
+              String(task.assignee_id) === memberId
+          )
+          .reduce((sum, task) => sum + Number(task.difficulty ?? 1), 0);
+        const docsScore = docs.filter((doc) => String(doc.updated_by) === memberId).length;
+        const goalsScore = krs.filter((kr) => String(kr.updated_by) === memberId).length;
+        const collaboration = events.filter(
+          (event) =>
+            String(event.actor_user_id) === memberId &&
+            ["comment", "review", "blocker_resolved"].includes(
+              String(event.event_type)
+            )
+        ).length;
+
+        return {
+          userId: memberId,
+          raw: {
+            execution,
+            docs: docsScore,
+            goals: goalsScore,
+            collaboration,
+          },
+        };
+      });
+
+      const maxExecution = Math.max(1, ...rawByMember.map((item) => item.raw.execution));
+      const maxDocs = Math.max(1, ...rawByMember.map((item) => item.raw.docs));
+      const maxGoals = Math.max(1, ...rawByMember.map((item) => item.raw.goals));
+      const maxCollab = Math.max(
+        1,
+        ...rawByMember.map((item) => item.raw.collaboration)
+      );
+
+      const selected = rawByMember.find((item) => item.userId === userId);
+      if (!selected) return undefined;
+
+      const normalized = {
+        execution: Math.round((selected.raw.execution / maxExecution) * 10000) / 10000,
+        docs: Math.round((selected.raw.docs / maxDocs) * 10000) / 10000,
+        goals: Math.round((selected.raw.goals / maxGoals) * 10000) / 10000,
+        collaboration:
+          Math.round((selected.raw.collaboration / maxCollab) * 10000) / 10000,
+      };
+
+      const scorePreview =
+        cycle.weights.execution * normalized.execution +
+        cycle.weights.docs * normalized.docs +
+        cycle.weights.goals * normalized.goals +
+        cycle.weights.collaboration * normalized.collaboration;
+
+      return {
+        evidencePack: {
+          periodStart: cycle.periodStart,
+          periodEnd: cycle.periodEnd,
+          raw: selected.raw,
+          normalized,
+          highlights: [
+            `완료 난이도 점수 ${selected.raw.execution}`,
+            `문서 업데이트 ${selected.raw.docs}건`,
+            `목표/KR 업데이트 ${selected.raw.goals}건`,
+            `협업 이벤트 ${selected.raw.collaboration}건`,
+          ],
+        },
+        scorePreview: Math.round(scorePreview * 100) / 100,
+      };
+    },
+
+    async getPerformanceReview(workspaceId: string, cycleId: string, userId: string) {
+      const { data, error } = await client
+        .from("performance_reviews")
+        .select(
+          "id, cycle_id, workspace_id, user_id, evidence_snapshot_json, score_preview, manager_note, final_rating, locked_at, updated_by, updated_at"
+        )
+        .eq("workspace_id", workspaceId)
+        .eq("cycle_id", cycleId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      normalizeError(error, "PERFORMANCE_REVIEW_GET_FAILED");
+      return data ? toPerformanceReview(data as AnyRow) : undefined;
+    },
+
+    async listPerformanceReviewsByCycle(workspaceId: string, cycleId: string) {
+      const { data, error } = await client
+        .from("performance_reviews")
+        .select(
+          "id, cycle_id, workspace_id, user_id, evidence_snapshot_json, score_preview, manager_note, final_rating, locked_at, updated_by, updated_at"
+        )
+        .eq("workspace_id", workspaceId)
+        .eq("cycle_id", cycleId)
+        .order("user_id", { ascending: true });
+      normalizeError(error, "PERFORMANCE_REVIEW_LIST_FAILED");
+      return (data ?? []).map((row) => toPerformanceReview(row as AnyRow));
+    },
+
+    async upsertPerformanceReview(input: UpsertPerformanceReviewInput) {
+      const existing = await this.getPerformanceReview(
+        input.workspaceId,
+        input.cycleId,
+        input.userId
+      );
+      if (existing?.lockedAt) {
+        throw new Error("REVIEW_LOCKED");
+      }
+
+      const evidence = await this.buildEvidencePack(
+        input.workspaceId,
+        input.cycleId,
+        input.userId
+      );
+      if (!evidence) return undefined;
+
+      const patch = {
+        cycle_id: input.cycleId,
+        workspace_id: input.workspaceId,
+        user_id: input.userId,
+        evidence_snapshot_json: evidence.evidencePack,
+        score_preview: evidence.scorePreview,
+        manager_note: input.managerNote,
+        final_rating: input.finalRating,
+        locked_at: input.lock ? new Date().toISOString() : null,
+        updated_by: input.updatedBy,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data, error } = await client
+        .from("performance_reviews")
+        .upsert(patch, { onConflict: "cycle_id,user_id" })
+        .select(
+          "id, cycle_id, workspace_id, user_id, evidence_snapshot_json, score_preview, manager_note, final_rating, locked_at, updated_by, updated_at"
+        )
+        .single();
+      normalizeError(error, "PERFORMANCE_REVIEW_UPSERT_FAILED");
+
+      await this.addAdminAuditLog({
+        workspaceId: input.workspaceId,
+        actorUserId: input.updatedBy,
+        action: existing ? "performance_review_updated" : "performance_review_created",
+        targetUserId: input.userId,
+        payload: { cycleId: input.cycleId, lock: Boolean(input.lock) },
+      });
+
+      return toPerformanceReview(requireRow(data, "PERFORMANCE_REVIEW_UPSERT_FAILED") as AnyRow);
+    },
+
+    async addAdminAuditLog(log: Omit<AdminAuditLog, "id" | "createdAt">) {
+      const { error } = await client.from("admin_audit_logs").insert({
+        workspace_id: log.workspaceId,
+        actor_user_id: log.actorUserId,
+        action: log.action,
+        target_user_id: log.targetUserId ?? null,
+        payload_json: log.payload,
+      });
+      normalizeError(error, "ADMIN_AUDIT_LOG_CREATE_FAILED");
+    },
+
+    async listAdminAuditLogs(workspaceId: string) {
+      const { data, error } = await client
+        .from("admin_audit_logs")
+        .select("id, workspace_id, actor_user_id, action, target_user_id, payload_json, created_at")
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false });
+      normalizeError(error, "ADMIN_AUDIT_LOG_LIST_FAILED");
+      return ((data ?? []) as AnyRow[]).map((row) => ({
+        id: String(row.id),
+        workspaceId: String(row.workspace_id),
+        actorUserId: String(row.actor_user_id),
+        action: String(row.action),
+        targetUserId: row.target_user_id ? String(row.target_user_id) : undefined,
+        payload: (row.payload_json as Record<string, unknown>) ?? {},
+        createdAt: String(row.created_at),
+      }));
     },
 
     async addActivityEvent(event: Omit<ActivityEvent, "id" | "createdAt">) {
