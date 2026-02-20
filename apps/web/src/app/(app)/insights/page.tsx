@@ -1,26 +1,37 @@
+const METRICS = [
+  { label: "Weekly Done Tasks", value: "-" },
+  { label: "Goal Achievement Rate", value: "-" },
+  { label: "Upcoming Due", value: "-" },
+] as const;
+
 export default function InsightsPage() {
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-6 py-12">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold">Insights</h1>
-        <p className="mt-2 text-sm text-slate-600">
+    <main className="space-y-6">
+      <header className="surface-card px-6 py-7 md:px-8">
+        <p className="page-kicker">Performance</p>
+        <h1 className="page-title">Insights</h1>
+        <p className="page-subtitle">
           Weekly performance, goal progress, and contribution transparency.
         </p>
       </header>
 
       <section className="grid gap-4 md:grid-cols-3">
-        <article className="rounded-xl border border-slate-200 p-5">
-          <h2 className="text-sm text-slate-500">Weekly Done Tasks</h2>
-          <p className="mt-2 text-2xl font-semibold">-</p>
-        </article>
-        <article className="rounded-xl border border-slate-200 p-5">
-          <h2 className="text-sm text-slate-500">Goal Achievement Rate</h2>
-          <p className="mt-2 text-2xl font-semibold">-</p>
-        </article>
-        <article className="rounded-xl border border-slate-200 p-5">
-          <h2 className="text-sm text-slate-500">Upcoming Due</h2>
-          <p className="mt-2 text-2xl font-semibold">-</p>
-        </article>
+        {METRICS.map((metric) => (
+          <article key={metric.label} className="surface-card p-5">
+            <h2 className="text-sm text-slate-500">{metric.label}</h2>
+            <p className="stat-value">{metric.value}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="surface-card p-6">
+        <h2 className="section-title">Contribution Snapshot</h2>
+        <p className="muted-copy mt-2 text-sm">
+          팀원별 기여도 점수와 원본 지표는 API 연동 후 이 영역에 표시됩니다.
+        </p>
+        <div className="mt-4 rounded-xl border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-slate-500">
+          No contribution data yet
+        </div>
       </section>
     </main>
   );

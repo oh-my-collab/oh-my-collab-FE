@@ -1,16 +1,32 @@
+const METRICS = [
+  { label: "Active goals", value: "-" },
+  { label: "Average progress", value: "-" },
+  { label: "At-risk goals", value: "-" },
+] as const;
+
 export default function GoalsPage() {
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-6 py-12">
-      <header className="mb-8">
-        <h1 className="text-3xl font-semibold">Goals & Key Results</h1>
-        <p className="mt-2 text-sm text-slate-600">
+    <main className="space-y-6">
+      <header className="surface-card px-6 py-7 md:px-8">
+        <p className="page-kicker">Goal Tracking</p>
+        <h1 className="page-title">Goals & Key Results</h1>
+        <p className="page-subtitle">
           Track semester goals with measurable key results and weekly progress.
         </p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          {METRICS.map((metric) => (
+            <article key={metric.label} className="rounded-xl border border-[var(--border)] p-4">
+              <p className="text-sm text-slate-500">{metric.label}</p>
+              <p className="stat-value">{metric.value}</p>
+            </article>
+          ))}
+        </div>
       </header>
 
-      <section className="rounded-xl border border-slate-200 p-6">
-        <h2 className="text-lg font-medium">No goals yet</h2>
-        <p className="mt-2 text-sm text-slate-500">
+      <section className="surface-card p-6">
+        <span className="chip">Goal Board</span>
+        <h2 className="section-title mt-3">No goals yet</h2>
+        <p className="muted-copy mt-2 text-sm">
           Create your first goal and attach key results to monitor execution.
         </p>
       </section>
