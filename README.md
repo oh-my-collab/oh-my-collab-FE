@@ -38,10 +38,12 @@ npm --prefix apps/web run build
 ## Supabase 마이그레이션 순서
 1. `apps/web/supabase/migrations/20260219_001_init.sql`
 2. `apps/web/supabase/migrations/20260219_002_insights.sql`
+3. `apps/web/supabase/migrations/20260220_003_admin_reviews.sql`
+4. `apps/web/supabase/migrations/20260221_004_workspace_rls.sql`
 
 ## 샘플 데이터 시드
 ```bash
-npm --prefix apps/web run seed
+npm --prefix apps/web run seed -- --owner-user-id <OWNER_USER_UUID> --workspace-name "My Capstone Team"
 ```
 
 ## 배포/환경 문서

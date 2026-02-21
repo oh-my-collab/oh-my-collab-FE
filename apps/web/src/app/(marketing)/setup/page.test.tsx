@@ -15,4 +15,13 @@ describe("SetupPage", () => {
       screen.getByText(/워크스페이스 초기화 및 샘플 데이터 점검/i)
     ).toBeInTheDocument();
   });
+
+  it("renders workspace backend connection section", () => {
+    render(<SetupPage />);
+
+    expect(screen.getAllByText(/워크스페이스 연동 상태/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/백엔드 API와 연결된 워크스페이스 목록/i).length
+    ).toBeGreaterThan(0);
+  });
 });

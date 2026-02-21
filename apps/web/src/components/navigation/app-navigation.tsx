@@ -4,11 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/setup", label: "설정", short: "설" },
-  { href: "/tasks", label: "작업", short: "작" },
-  { href: "/goals", label: "목표", short: "목" },
-  { href: "/docs", label: "문서", short: "문" },
-  { href: "/insights", label: "인사이트", short: "인" },
+  { href: "/setup", label: "설정" },
+  { href: "/tasks", label: "작업" },
+  { href: "/goals", label: "목표" },
+  { href: "/docs", label: "문서" },
+  { href: "/insights", label: "인사이트" },
 ] as const;
 
 type AppNavigationProps = {
@@ -20,7 +20,7 @@ export function AppNavigation({ orientation = "vertical" }: AppNavigationProps) 
 
   return (
     <nav
-      aria-label="Primary"
+      aria-label="앱 주요 메뉴"
       className={
         orientation === "vertical" ? "flex flex-col gap-1.5" : "flex flex-wrap gap-2"
       }
@@ -38,7 +38,6 @@ export function AppNavigation({ orientation = "vertical" }: AppNavigationProps) 
             className="nav-link"
             data-active={isActive ? "true" : "false"}
           >
-            <span className="status-chip">{item.short}</span>
             {item.label}
           </Link>
         );

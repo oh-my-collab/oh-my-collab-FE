@@ -18,36 +18,63 @@ const defaultDeps: WorkspaceDeps = {
   getStore: () => getRuntimeCollabStore(),
 };
 
-export function createPostWorkspaceHandler(deps: WorkspaceDeps) {
-  return async function POST(request: Request) {
-    try {
-      const userId = await deps.getUserId(request);
-      const store = await deps.getStore();
-      const payload = createWorkspaceSchema.parse(await request.json());
-      const result = await store.createWorkspaceWithOwner({
-        name: payload.name,
-        ownerUserId: userId,
-      });
+function handleWorkspaceError(error: unknown) {
+  if (error instanceof z.ZodError) {
+    return Response.json(
+      {
+        message: "INVALID_INPUT",
+        issues: error.issues,
+      },
+      { status: 400 }
+    );
+  }
 
-      return Response.json(result, { status: 201 });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
+  if (error instanceof Error && error.message === "UNAUTHORIZED") {
+    return Response.json({ message: "UNAUTHORIZED" }, { status: 401 });
+  }
+
+  return Response.json({ message: "INTERNAL_ERROR" }, { status: 500 });
+}
+
+export function createWorkspaceHandlers(deps: WorkspaceDeps) {
+  return {
+    GET: async (request: Request) => {
+      try {
+        const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
+        const workspaces = await store.listWorkspacesByUser(userId);
+
         return Response.json(
           {
-            message: "INVALID_INPUT",
-            issues: error.issues,
+            workspaces,
+            defaultWorkspaceId: workspaces[0]?.workspaceId ?? null,
           },
-          { status: 400 }
+          { status: 200 }
         );
+      } catch (error) {
+        return handleWorkspaceError(error);
       }
+    },
 
-      if (error instanceof Error && error.message === "UNAUTHORIZED") {
-        return Response.json({ message: "UNAUTHORIZED" }, { status: 401 });
+    POST: async (request: Request) => {
+      try {
+        const userId = await deps.getUserId(request);
+        const store = await deps.getStore();
+        const payload = createWorkspaceSchema.parse(await request.json());
+        const result = await store.createWorkspaceWithOwner({
+          name: payload.name,
+          ownerUserId: userId,
+        });
+
+        return Response.json(result, { status: 201 });
+      } catch (error) {
+        return handleWorkspaceError(error);
       }
-
-      return Response.json({ message: "INTERNAL_ERROR" }, { status: 500 });
-    }
+    },
   };
 }
 
-export const POST = createPostWorkspaceHandler(defaultDeps);
+const handlers = createWorkspaceHandlers(defaultDeps);
+
+export const GET = handlers.GET;
+export const POST = handlers.POST;

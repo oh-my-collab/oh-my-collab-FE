@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WorkspaceConnectionPanel } from "@/components/setup/workspace-connection-panel";
 
 const STEPS = [
   {
@@ -74,20 +75,24 @@ export default function SetupPage() {
           </ol>
         </div>
 
-        <div className="section-shell">
-          <div className="section-head">
-            <h2 className="section-title">준비 큐</h2>
-            <span className="chip">운영 상태</span>
+        <div className="space-y-4">
+          <div className="section-shell">
+            <div className="section-head">
+              <h2 className="section-title">준비 큐</h2>
+              <span className="chip">운영 상태</span>
+            </div>
+            <ul className="space-y-2">
+              {DELIVERY_QUEUE.map((item) => (
+                <li key={item.title} className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-raised)] px-3 py-2.5">
+                  <p className="text-sm font-semibold text-[var(--ink-strong)]">{item.title}</p>
+                  <p className="mt-1 text-xs text-[var(--ink-subtle)]">{item.owner}</p>
+                  <span className="status-chip mt-2">{item.status}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <ul className="space-y-2">
-            {DELIVERY_QUEUE.map((item) => (
-              <li key={item.title} className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-raised)] px-3 py-2.5">
-                <p className="text-sm font-semibold text-[var(--ink-strong)]">{item.title}</p>
-                <p className="mt-1 text-xs text-[var(--ink-subtle)]">{item.owner}</p>
-                <span className="status-chip mt-2">{item.status}</span>
-              </li>
-            ))}
-          </ul>
+
+          <WorkspaceConnectionPanel />
         </div>
       </section>
 

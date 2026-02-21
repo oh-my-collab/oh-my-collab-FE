@@ -82,4 +82,25 @@ describe("admin members api", () => {
     const res = await PATCH(req);
     expect(res.status).toBe(403);
   });
+
+  it("blocks owner row role change", async () => {
+    const store = createSeededStore();
+    const { PATCH } = createAdminMembersHandlers({
+      getUserId: async () => "owner-1",
+      getStore: async () => store,
+    });
+
+    const req = new Request("http://localhost/api/admin/members", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: "ws_1",
+        targetUserId: "owner-1",
+        role: "admin",
+      }),
+    });
+
+    const res = await PATCH(req);
+    expect(res.status).toBe(409);
+  });
 });

@@ -18,6 +18,8 @@ Vercel 프로젝트 설정의 환경 변수 항목에 아래 값을 등록합니
 2. 아래 마이그레이션 파일을 순서대로 실행합니다.
    - `apps/web/supabase/migrations/20260219_001_init.sql`
    - `apps/web/supabase/migrations/20260219_002_insights.sql`
+   - `apps/web/supabase/migrations/20260220_003_admin_reviews.sql`
+   - `apps/web/supabase/migrations/20260221_004_workspace_rls.sql`
 
 ## 4. 배포 실행 및 기본 점검
 1. Vercel에서 배포를 실행합니다.
@@ -35,3 +37,10 @@ Supabase 로그인 세션이 있는 상태에서 `POST /api/workspaces`를 호�
 ```
 
 세션 인증 기반이므로, 같은 브라우저 세션 또는 유효한 인증 쿠키를 사용하는 클라이언트에서 호출해야 합니다.
+
+## 6. 샘플 데이터 시드(선택)
+서비스 롤 키를 설정한 후 아래 명령으로 초기 운영 데이터를 넣을 수 있습니다.
+
+```bash
+npm --prefix apps/web run seed -- --owner-user-id <OWNER_USER_UUID> --workspace-name "My Capstone Team"
+```

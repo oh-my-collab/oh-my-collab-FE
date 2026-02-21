@@ -10,9 +10,32 @@ function hasSupabaseRuntimeEnv() {
   );
 }
 
+type InMemoryStoreDecisionInput = {
+  nodeEnv: string | undefined;
+  hasSupabaseEnv: boolean;
+};
+
+export function shouldUseInMemoryStore({
+  nodeEnv,
+  hasSupabaseEnv,
+}: InMemoryStoreDecisionInput) {
+  if (hasSupabaseEnv) return false;
+  return nodeEnv !== "production";
+}
+
 export async function getRuntimeCollabStore(): Promise<CollabStore> {
-  if (!hasSupabaseRuntimeEnv()) {
+  const hasSupabaseEnv = hasSupabaseRuntimeEnv();
+  if (
+    shouldUseInMemoryStore({
+      nodeEnv: process.env.NODE_ENV,
+      hasSupabaseEnv,
+    })
+  ) {
     return collabStore;
+  }
+
+  if (!hasSupabaseEnv) {
+    throw new Error("SUPABASE_RUNTIME_ENV_MISSING");
   }
 
   const client = await createSupabaseServerClient();

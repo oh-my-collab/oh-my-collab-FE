@@ -26,3 +26,8 @@ npm --prefix apps/web run build
 - `UNAUTHORIZED`: Supabase 세션이 없거나 만료된 상태입니다.
 - `FORBIDDEN`: 현재 사용자가 대상 워크스페이스 멤버가 아닙니다.
 - `INTERNAL_ERROR`: 요청 본문 형식이 잘못됐거나 필수 환경 변수가 누락되었습니다.
+
+## 시드 실행 체크
+- `npm --prefix apps/web run seed -- --owner-user-id <UUID> --workspace-name "<name>"` 실행 전 아래를 확인합니다.
+- `<UUID>`는 Supabase Auth의 실제 사용자 UUID여야 합니다.
+- 마이그레이션은 `20260219_001` → `20260219_002` → `20260220_003` → `20260221_004` 순서로 적용되어야 합니다.
