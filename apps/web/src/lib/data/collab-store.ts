@@ -244,6 +244,11 @@ export type ReorderTasksInput = {
   userId: string;
 };
 
+export type TaskListPageInput = {
+  limit: number;
+  offset: number;
+};
+
 export type CreateGoalInput = {
   workspaceId: string;
   title: string;
@@ -434,7 +439,11 @@ export type CollabStore = {
   updateDoc: (input: UpdateDocInput) => MaybePromise<Doc | undefined>;
   deleteDoc: (workspaceId: string, docId: string) => MaybePromise<boolean>;
   createTask: (input: CreateTaskInput) => MaybePromise<Task>;
-  listTasksByWorkspace: (workspaceId: string) => MaybePromise<Task[]>;
+  listTasksByWorkspace: (
+    workspaceId: string,
+    page?: TaskListPageInput
+  ) => MaybePromise<Task[]>;
+  countTasksByWorkspace: (workspaceId: string) => MaybePromise<number>;
   getTaskById: (
     workspaceId: string,
     taskId: string
@@ -831,14 +840,24 @@ export function createInMemoryCollabStore(
       return task;
     },
 
-    listTasksByWorkspace(workspaceId) {
-      return state.tasks
+    listTasksByWorkspace(workspaceId, page) {
+      const tasks = state.tasks
         .filter((task) => task.workspaceId === workspaceId)
         .sort((a, b) => {
           const sortOrderDiff = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
           if (sortOrderDiff !== 0) return sortOrderDiff;
           return a.createdAt.localeCompare(b.createdAt);
         });
+
+      if (!page) return tasks;
+
+      const start = Math.max(0, page.offset);
+      const end = start + Math.max(0, page.limit);
+      return tasks.slice(start, end);
+    },
+
+    countTasksByWorkspace(workspaceId) {
+      return state.tasks.filter((task) => task.workspaceId === workspaceId).length;
     },
 
     getTaskById(workspaceId, taskId) {

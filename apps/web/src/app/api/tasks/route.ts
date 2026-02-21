@@ -23,6 +23,11 @@ const createTaskSchema = z.object({
   sortOrder: z.number().min(0).optional(),
 });
 
+const listTasksQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).optional().default(100),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});
+
 type TaskDeps = {
   getUserId: (request: Request) => Promise<string>;
   getStore: () => Promise<CollabStore> | CollabStore;
@@ -33,10 +38,21 @@ const defaultDeps: TaskDeps = {
   getStore: () => getRuntimeCollabStore(),
 };
 
-function getWorkspaceIdFromUrl(url: string) {
-  const workspaceId = new URL(url).searchParams.get("workspaceId");
+function parseListTasksQuery(url: string) {
+  const parsedUrl = new URL(url);
+  const workspaceId = parsedUrl.searchParams.get("workspaceId");
   if (!workspaceId) throw new Error("INVALID_INPUT");
-  return workspaceId;
+
+  const parsed = listTasksQuerySchema.parse({
+    limit: parsedUrl.searchParams.get("limit") ?? undefined,
+    offset: parsedUrl.searchParams.get("offset") ?? undefined,
+  });
+
+  return {
+    workspaceId,
+    limit: parsed.limit,
+    offset: parsed.offset,
+  };
 }
 
 async function ensureWorkspaceAccess(
@@ -71,11 +87,21 @@ export function createTaskHandlers(deps: TaskDeps) {
       try {
         const userId = await deps.getUserId(request);
         const store = await deps.getStore();
-        const workspaceId = getWorkspaceIdFromUrl(request.url);
+        const { workspaceId, limit, offset } = parseListTasksQuery(request.url);
         await ensureWorkspaceAccess(store, workspaceId, userId);
+        const total = await store.countTasksByWorkspace(workspaceId);
+        const tasks = await store.listTasksByWorkspace(workspaceId, { limit, offset });
 
         return Response.json(
-          { tasks: await store.listTasksByWorkspace(workspaceId) },
+          {
+            tasks,
+            page: {
+              limit,
+              offset,
+              total,
+              hasMore: offset + tasks.length < total,
+            },
+          },
           { status: 200 }
         );
       } catch (error) {

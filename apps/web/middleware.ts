@@ -1,10 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_ROUTES = new Set(["/", "/login", "/api/health"]);
+const PROTECTED_ROUTE_PREFIXES = [
+  "/overview",
+  "/deadlines",
+  "/team",
+  "/tasks",
+  "/goals",
+  "/docs",
+  "/insights",
+  "/admin",
+] as const;
 
-function isPublicPath(pathname: string) {
-  return PUBLIC_ROUTES.has(pathname);
+export function isProtectedPath(pathname: string) {
+  return PROTECTED_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
 }
 
 function getSupabaseEnv() {
@@ -16,7 +27,7 @@ function getSupabaseEnv() {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (isPublicPath(pathname) || !pathname.startsWith("/app")) {
+  if (!isProtectedPath(pathname)) {
     return NextResponse.next();
   }
 
@@ -48,15 +59,24 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.searchParams.set("redirectedFrom", pathname);
-    return NextResponse.redirect(loginUrl);
+    const setupUrl = request.nextUrl.clone();
+    setupUrl.pathname = "/setup";
+    setupUrl.searchParams.set("redirectedFrom", pathname);
+    return NextResponse.redirect(setupUrl);
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/app/:path*"],
+  matcher: [
+    "/overview/:path*",
+    "/deadlines/:path*",
+    "/team/:path*",
+    "/tasks/:path*",
+    "/goals/:path*",
+    "/docs/:path*",
+    "/insights/:path*",
+    "/admin/:path*",
+  ],
 };

@@ -6,7 +6,7 @@ import { getRuntimeCollabStore } from "@/lib/data/store-provider";
 
 const reorderTasksSchema = z.object({
   workspaceId: z.string().min(1),
-  orderedTaskIds: z.array(z.string().min(1)).min(1),
+  orderedTaskIds: z.array(z.string().min(1)).min(1).max(1000),
 });
 
 type ReorderDeps = {
@@ -33,6 +33,9 @@ function handleError(error: unknown) {
   if (error instanceof z.ZodError) {
     return Response.json({ message: "INVALID_INPUT", issues: error.issues }, { status: 400 });
   }
+  if (error instanceof Error && error.message === "INVALID_INPUT") {
+    return Response.json({ message: "INVALID_INPUT" }, { status: 400 });
+  }
   if (error instanceof Error && error.message === "UNAUTHORIZED") {
     return Response.json({ message: "UNAUTHORIZED" }, { status: 401 });
   }
@@ -40,6 +43,23 @@ function handleError(error: unknown) {
     return Response.json({ message: "FORBIDDEN" }, { status: 403 });
   }
   return Response.json({ message: "INTERNAL_ERROR" }, { status: 500 });
+}
+
+function validateReorderTaskIds(currentTaskIds: string[], orderedTaskIds: string[]) {
+  if (currentTaskIds.length !== orderedTaskIds.length) {
+    throw new Error("INVALID_INPUT");
+  }
+
+  const uniqueOrderedIds = new Set(orderedTaskIds);
+  if (uniqueOrderedIds.size !== orderedTaskIds.length) {
+    throw new Error("INVALID_INPUT");
+  }
+
+  const currentTaskIdSet = new Set(currentTaskIds);
+  const hasUnknownId = orderedTaskIds.some((taskId) => !currentTaskIdSet.has(taskId));
+  if (hasUnknownId) {
+    throw new Error("INVALID_INPUT");
+  }
 }
 
 export function createTaskReorderHandlers(deps: ReorderDeps) {
@@ -50,6 +70,11 @@ export function createTaskReorderHandlers(deps: ReorderDeps) {
         const store = await deps.getStore();
         const payload = reorderTasksSchema.parse(await request.json());
         await ensureWorkspaceAccess(store, payload.workspaceId, userId);
+        const currentTasks = await store.listTasksByWorkspace(payload.workspaceId);
+        validateReorderTaskIds(
+          currentTasks.map((task) => task.id),
+          payload.orderedTaskIds
+        );
 
         const tasks = await store.reorderTasks({
           workspaceId: payload.workspaceId,

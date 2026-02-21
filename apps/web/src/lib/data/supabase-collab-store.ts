@@ -19,6 +19,7 @@ import type {
   PerformanceReview,
   ReorderTasksInput,
   Task,
+  TaskListPageInput,
   UpdatePerformanceCycleInput,
   UpdateDocInput,
   UpdateKeyResultProgressInput,
@@ -469,15 +470,32 @@ export function createSupabaseCollabStore(client: SupabaseClient): CollabStore {
       return toTask(requireRow(data, "TASK_CREATE_FAILED") as AnyRow);
     },
 
-    async listTasksByWorkspace(workspaceId: string) {
-      const { data, error } = await client
+    async listTasksByWorkspace(workspaceId: string, page?: TaskListPageInput) {
+      let query = client
         .from("tasks")
         .select(TASK_SELECT_FIELDS)
         .eq("workspace_id", workspaceId)
         .order("sort_order", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: true });
+
+      if (page) {
+        const from = Math.max(0, page.offset);
+        const to = from + Math.max(0, page.limit) - 1;
+        query = query.range(from, to);
+      }
+
+      const { data, error } = await query;
       normalizeError(error, "TASK_LIST_FAILED");
       return (data ?? []).map((row) => toTask(row as AnyRow));
+    },
+
+    async countTasksByWorkspace(workspaceId: string) {
+      const { count, error } = await client
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("workspace_id", workspaceId);
+      normalizeError(error, "TASK_COUNT_FAILED");
+      return count ?? 0;
     },
 
     async getTaskById(workspaceId: string, taskId: string) {
@@ -537,20 +555,12 @@ export function createSupabaseCollabStore(client: SupabaseClient): CollabStore {
     },
 
     async reorderTasks(input: ReorderTasksInput) {
-      const updates = input.orderedTaskIds.map((taskId, index) =>
-        client
-          .from("tasks")
-          .update({
-            sort_order: (index + 1) * 100,
-            updated_by: input.userId,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("workspace_id", input.workspaceId)
-          .eq("id", taskId)
-      );
-
-      const results = await Promise.all(updates);
-      results.forEach((result) => normalizeError(result.error, "TASK_REORDER_FAILED"));
+      const { error } = await client.rpc("reorder_workspace_tasks", {
+        p_workspace_id: input.workspaceId,
+        p_ordered_task_ids: input.orderedTaskIds,
+        p_actor_user_id: input.userId,
+      });
+      normalizeError(error, "TASK_REORDER_FAILED");
 
       return this.listTasksByWorkspace(input.workspaceId);
     },
