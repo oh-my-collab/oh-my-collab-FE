@@ -1,27 +1,23 @@
 import type { ReactNode } from "react";
 
-import { getSessionUserId } from "@/lib/auth/session-user";
-import { getRuntimeCollabStore } from "@/lib/data/store-provider";
 import { AppShell } from "@/components/layout/app-shell";
+import { resolveWorkspaceContext } from "@/lib/workspace/resolve-workspace-context";
 
 type AppLayoutProps = {
   children: ReactNode;
 };
 
 export default async function AppLayout({ children }: AppLayoutProps) {
-  let canViewAdmin = false;
+  const workspaceContext = await resolveWorkspaceContext();
 
-  try {
-    const userId = await getSessionUserId();
-    const store = await getRuntimeCollabStore();
-    const memberships = await store.listMembershipsByUser(userId);
-    canViewAdmin = memberships.some(
-      (membership) =>
-        membership.role === "owner" || membership.role === "admin"
-    );
-  } catch {
-    canViewAdmin = false;
-  }
-
-  return <AppShell canViewAdmin={canViewAdmin}>{children}</AppShell>;
+  return (
+    <AppShell
+      canViewAdmin={workspaceContext.canViewAdmin}
+      workspaceId={workspaceContext.workspaceId ?? undefined}
+      workspaceName={workspaceContext.workspaceName}
+      role={workspaceContext.role}
+    >
+      {children}
+    </AppShell>
+  );
 }

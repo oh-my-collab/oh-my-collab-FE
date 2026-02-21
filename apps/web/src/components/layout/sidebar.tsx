@@ -4,8 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export type SidebarItem = {
+  path: string;
   href: string;
   label: string;
+  shortLabel: string;
+  shortcut: string;
   adminOnly?: boolean;
 };
 
@@ -30,20 +33,32 @@ export function Sidebar({
         .filter((item) => !item.adminOnly || canViewAdmin)
         .map((item) => {
           const active =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+            pathname === item.path || pathname.startsWith(`${item.path}/`);
+
           return (
             <Link
-              key={item.href}
+              key={item.path}
               href={item.href}
-              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+              className={`group rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
                 active
-                  ? "border-blue-300 bg-blue-50 text-blue-700"
-                  : "border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-100"
+                  ? "border-[var(--primary-400)] bg-[rgba(43,99,217,0.12)] text-[var(--primary-700)]"
+                  : "border-transparent text-[var(--ink-default)] hover:border-[var(--line-default)] hover:bg-[var(--surface-soft)]"
               } ${collapsed ? "text-center" : "text-left"}`}
               onClick={onNavigate}
               title={collapsed ? item.label : undefined}
             >
-              {collapsed ? item.label.slice(0, 1) : item.label}
+              {collapsed ? (
+                <span className="inline-flex w-full items-center justify-center font-semibold">
+                  {item.shortLabel}
+                </span>
+              ) : (
+                <span className="flex items-center justify-between gap-2">
+                  <span>{item.label}</span>
+                  <span className="rounded border border-[var(--line-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--ink-subtle)]">
+                    {item.shortcut}
+                  </span>
+                </span>
+              )}
             </Link>
           );
         })}
