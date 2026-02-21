@@ -12,7 +12,9 @@ export type AppNavItem = {
 };
 
 export const APP_NAV_ITEMS: AppNavItem[] = [
+  { path: "/overview", label: "요약", icon: "요" },
   { path: "/tasks", label: "작업", icon: "작" },
+  { path: "/deadlines", label: "마감", icon: "마" },
   { path: "/goals", label: "목표", icon: "목" },
   { path: "/docs", label: "문서", icon: "문" },
   { path: "/insights", label: "인사이트", icon: "인" },
