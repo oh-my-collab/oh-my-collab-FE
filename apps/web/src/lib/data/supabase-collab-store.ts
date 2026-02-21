@@ -17,6 +17,7 @@ import type {
   KeyResult,
   PerformanceCycle,
   PerformanceReview,
+  ReorderTasksInput,
   Task,
   UpdatePerformanceCycleInput,
   UpdateDocInput,
@@ -77,12 +78,24 @@ function toTask(row: AnyRow): Task {
       ? row.checklist.map((item) => String(item))
       : [],
     repeat: String(row.repeat_rule ?? "none") as Task["repeat"],
+    sprintKey: row.sprint_key ? String(row.sprint_key) : undefined,
+    isBlocked: Boolean(row.is_blocked),
+    blockedReason: row.blocked_reason ? String(row.blocked_reason) : undefined,
+    sortOrder:
+      typeof row.sort_order === "number"
+        ? row.sort_order
+        : row.sort_order
+          ? Number(row.sort_order)
+          : undefined,
     createdBy: String(row.created_by),
     updatedBy: String(row.updated_by),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
 }
+
+const TASK_SELECT_FIELDS =
+  "id, workspace_id, title, description, status, assignee_id, priority, difficulty, due_date, checklist, repeat_rule, sprint_key, is_blocked, blocked_reason, sort_order, created_by, updated_by, created_at, updated_at";
 
 function toGoal(row: AnyRow): Goal {
   return {
@@ -265,6 +278,35 @@ export function createSupabaseCollabStore(client: SupabaseClient): CollabStore {
       return (data ?? []).map((row) => toMembership(row as AnyRow));
     },
 
+    async listWorkspacesByUser(userId: string) {
+      const memberships = await this.listMembershipsByUser(userId);
+      if (memberships.length === 0) return [];
+
+      const workspaceIds = memberships.map((membership) => membership.workspaceId);
+      const { data, error } = await client
+        .from("workspaces")
+        .select("id, name")
+        .in("id", workspaceIds);
+      normalizeError(error, "WORKSPACE_LIST_BY_USER_FAILED");
+
+      const workspaceNameById = new Map(
+        ((data ?? []) as AnyRow[]).map((row) => [
+          String(row.id),
+          String(row.name),
+        ])
+      );
+
+      return memberships
+        .map((membership) => ({
+          workspaceId: membership.workspaceId,
+          workspaceName:
+            workspaceNameById.get(membership.workspaceId) ?? membership.workspaceId,
+          role: membership.role,
+          joinedAt: membership.joinedAt,
+        }))
+        .sort((a, b) => a.joinedAt.localeCompare(b.joinedAt));
+    },
+
     async updateWorkspaceMembershipRole(input: UpdateWorkspaceMembershipRoleInput) {
       const actor = await this.getWorkspaceMembership(
         input.workspaceId,
@@ -413,13 +455,15 @@ export function createSupabaseCollabStore(client: SupabaseClient): CollabStore {
           due_date: input.dueDate,
           checklist: input.checklist ?? [],
           repeat_rule: input.repeat ?? "none",
+          sprint_key: input.sprintKey,
+          is_blocked: input.isBlocked ?? false,
+          blocked_reason: input.isBlocked ? input.blockedReason : null,
+          sort_order: input.sortOrder,
           created_by: input.createdBy,
           updated_by: input.createdBy,
           updated_at: now,
         })
-        .select(
-          "id, workspace_id, title, description, status, assignee_id, priority, difficulty, due_date, checklist, repeat_rule, created_by, updated_by, created_at, updated_at"
-        )
+        .select(TASK_SELECT_FIELDS)
         .single();
       normalizeError(error, "TASK_CREATE_FAILED");
       return toTask(requireRow(data, "TASK_CREATE_FAILED") as AnyRow);
@@ -428,11 +472,10 @@ export function createSupabaseCollabStore(client: SupabaseClient): CollabStore {
     async listTasksByWorkspace(workspaceId: string) {
       const { data, error } = await client
         .from("tasks")
-        .select(
-          "id, workspace_id, title, description, status, assignee_id, priority, difficulty, due_date, checklist, repeat_rule, created_by, updated_by, created_at, updated_at"
-        )
+        .select(TASK_SELECT_FIELDS)
         .eq("workspace_id", workspaceId)
-        .order("created_at", { ascending: false });
+        .order("sort_order", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
       normalizeError(error, "TASK_LIST_FAILED");
       return (data ?? []).map((row) => toTask(row as AnyRow));
     },
@@ -440,9 +483,7 @@ export function createSupabaseCollabStore(client: SupabaseClient): CollabStore {
     async getTaskById(workspaceId: string, taskId: string) {
       const { data, error } = await client
         .from("tasks")
-        .select(
-          "id, workspace_id, title, description, status, assignee_id, priority, difficulty, due_date, checklist, repeat_rule, created_by, updated_by, created_at, updated_at"
-        )
+        .select(TASK_SELECT_FIELDS)
         .eq("workspace_id", workspaceId)
         .eq("id", taskId)
         .maybeSingle();
@@ -464,15 +505,22 @@ export function createSupabaseCollabStore(client: SupabaseClient): CollabStore {
       if (typeof input.difficulty === "number") patch.difficulty = input.difficulty;
       if (Array.isArray(input.checklist)) patch.checklist = input.checklist;
       if (typeof input.repeat === "string") patch.repeat_rule = input.repeat;
+      if (typeof input.sprintKey === "string") patch.sprint_key = input.sprintKey;
+      if (typeof input.isBlocked === "boolean") {
+        patch.is_blocked = input.isBlocked;
+        if (!input.isBlocked) patch.blocked_reason = null;
+      }
+      if (typeof input.blockedReason === "string") {
+        patch.blocked_reason = input.blockedReason;
+      }
+      if (typeof input.sortOrder === "number") patch.sort_order = input.sortOrder;
 
       const { data, error } = await client
         .from("tasks")
         .update(patch)
         .eq("workspace_id", input.workspaceId)
         .eq("id", input.taskId)
-        .select(
-          "id, workspace_id, title, description, status, assignee_id, priority, difficulty, due_date, checklist, repeat_rule, created_by, updated_by, created_at, updated_at"
-        )
+        .select(TASK_SELECT_FIELDS)
         .maybeSingle();
       normalizeError(error, "TASK_UPDATE_FAILED");
       if (!data) return undefined;
@@ -486,6 +534,25 @@ export function createSupabaseCollabStore(client: SupabaseClient): CollabStore {
       }
 
       return toTask(data as AnyRow);
+    },
+
+    async reorderTasks(input: ReorderTasksInput) {
+      const updates = input.orderedTaskIds.map((taskId, index) =>
+        client
+          .from("tasks")
+          .update({
+            sort_order: (index + 1) * 100,
+            updated_by: input.userId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("workspace_id", input.workspaceId)
+          .eq("id", taskId)
+      );
+
+      const results = await Promise.all(updates);
+      results.forEach((result) => normalizeError(result.error, "TASK_REORDER_FAILED"));
+
+      return this.listTasksByWorkspace(input.workspaceId);
     },
 
     async deleteTask(workspaceId: string, taskId: string) {

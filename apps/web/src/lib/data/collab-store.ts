@@ -15,6 +15,13 @@ export type WorkspaceMembership = {
   joinedAt: string;
 };
 
+export type UserWorkspaceSummary = {
+  workspaceId: string;
+  workspaceName: string;
+  role: Role;
+  joinedAt: string;
+};
+
 export type PerformanceCycleStatus = "draft" | "open" | "closed";
 
 export type PerformanceWeights = {
@@ -109,6 +116,10 @@ export type Task = {
   dueDate?: string;
   checklist: string[];
   repeat: "none" | "daily" | "weekly";
+  sprintKey?: string;
+  isBlocked?: boolean;
+  blockedReason?: string;
+  sortOrder?: number;
   createdBy: string;
   updatedBy: string;
   createdAt: string;
@@ -201,6 +212,10 @@ export type CreateTaskInput = {
   difficulty?: number;
   checklist?: string[];
   repeat?: "none" | "daily" | "weekly";
+  sprintKey?: string;
+  isBlocked?: boolean;
+  blockedReason?: string;
+  sortOrder?: number;
   createdBy: string;
 };
 
@@ -217,6 +232,16 @@ export type UpdateTaskInput = {
   difficulty?: number;
   checklist?: string[];
   repeat?: "none" | "daily" | "weekly";
+  sprintKey?: string;
+  isBlocked?: boolean;
+  blockedReason?: string;
+  sortOrder?: number;
+};
+
+export type ReorderTasksInput = {
+  workspaceId: string;
+  orderedTaskIds: string[];
+  userId: string;
 };
 
 export type CreateGoalInput = {
@@ -396,6 +421,7 @@ export type CollabStore = {
     workspaceId: string
   ) => MaybePromise<WorkspaceMembership[]>;
   listMembershipsByUser: (userId: string) => MaybePromise<WorkspaceMembership[]>;
+  listWorkspacesByUser: (userId: string) => MaybePromise<UserWorkspaceSummary[]>;
   updateWorkspaceMembershipRole: (
     input: UpdateWorkspaceMembershipRoleInput
   ) => MaybePromise<WorkspaceMembership | undefined>;
@@ -414,6 +440,7 @@ export type CollabStore = {
     taskId: string
   ) => MaybePromise<Task | undefined>;
   updateTask: (input: UpdateTaskInput) => MaybePromise<Task | undefined>;
+  reorderTasks: (input: ReorderTasksInput) => MaybePromise<Task[]>;
   deleteTask: (workspaceId: string, taskId: string) => MaybePromise<boolean>;
   createGoal: (input: CreateGoalInput) => MaybePromise<Goal>;
   listGoalsByWorkspace: (workspaceId: string) => MaybePromise<Goal[]>;
@@ -658,6 +685,25 @@ export function createInMemoryCollabStore(
       return state.memberships.filter((m) => m.userId === userId);
     },
 
+    listWorkspacesByUser(userId) {
+      return state.memberships
+        .filter((membership) => membership.userId === userId)
+        .map((membership) => {
+          const workspace = state.workspaces.find(
+            (item) => item.id === membership.workspaceId
+          );
+          if (!workspace) return undefined;
+          return {
+            workspaceId: membership.workspaceId,
+            workspaceName: workspace.name,
+            role: membership.role,
+            joinedAt: membership.joinedAt,
+          };
+        })
+        .filter((item): item is UserWorkspaceSummary => Boolean(item))
+        .sort((a, b) => a.joinedAt.localeCompare(b.joinedAt));
+    },
+
     updateWorkspaceMembershipRole({
       workspaceId,
       targetUserId,
@@ -750,9 +796,16 @@ export function createInMemoryCollabStore(
       difficulty = 1,
       checklist = [],
       repeat = "none",
+      sprintKey,
+      isBlocked = false,
+      blockedReason,
+      sortOrder,
       createdBy,
     }) {
       const timestamp = nowIso();
+      const maxSortOrder = state.tasks
+        .filter((item) => item.workspaceId === workspaceId)
+        .reduce((max, item) => Math.max(max, item.sortOrder ?? 0), 0);
       const task: Task = {
         id: makeId("task", state),
         workspaceId,
@@ -765,6 +818,10 @@ export function createInMemoryCollabStore(
         dueDate,
         checklist,
         repeat,
+        sprintKey,
+        isBlocked,
+        blockedReason: isBlocked ? blockedReason : undefined,
+        sortOrder: typeof sortOrder === "number" ? sortOrder : maxSortOrder + 100,
         createdBy,
         updatedBy: createdBy,
         createdAt: timestamp,
@@ -775,7 +832,13 @@ export function createInMemoryCollabStore(
     },
 
     listTasksByWorkspace(workspaceId) {
-      return state.tasks.filter((task) => task.workspaceId === workspaceId);
+      return state.tasks
+        .filter((task) => task.workspaceId === workspaceId)
+        .sort((a, b) => {
+          const sortOrderDiff = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+          if (sortOrderDiff !== 0) return sortOrderDiff;
+          return a.createdAt.localeCompare(b.createdAt);
+        });
     },
 
     getTaskById(workspaceId, taskId) {
@@ -797,6 +860,10 @@ export function createInMemoryCollabStore(
       difficulty,
       checklist,
       repeat,
+      sprintKey,
+      isBlocked,
+      blockedReason,
+      sortOrder,
     }) {
       const task = state.tasks.find(
         (item) => item.id === taskId && item.workspaceId === workspaceId
@@ -813,6 +880,13 @@ export function createInMemoryCollabStore(
       if (typeof difficulty === "number") task.difficulty = difficulty;
       if (Array.isArray(checklist)) task.checklist = checklist;
       if (typeof repeat === "string") task.repeat = repeat;
+      if (typeof sprintKey === "string") task.sprintKey = sprintKey;
+      if (typeof isBlocked === "boolean") {
+        task.isBlocked = isBlocked;
+        if (!isBlocked) task.blockedReason = undefined;
+      }
+      if (typeof blockedReason === "string") task.blockedReason = blockedReason;
+      if (typeof sortOrder === "number") task.sortOrder = sortOrder;
       task.updatedBy = userId;
       task.updatedAt = nowIso();
 
@@ -825,6 +899,24 @@ export function createInMemoryCollabStore(
       }
 
       return task;
+    },
+
+    reorderTasks({ workspaceId, orderedTaskIds, userId }) {
+      const orderById = new Map(
+        orderedTaskIds.map((taskId, index) => [taskId, (index + 1) * 100])
+      );
+
+      state.tasks.forEach((task) => {
+        if (task.workspaceId !== workspaceId) return;
+        const ordered = orderById.get(task.id);
+        if (typeof ordered === "number") {
+          task.sortOrder = ordered;
+          task.updatedBy = userId;
+          task.updatedAt = nowIso();
+        }
+      });
+
+      return this.listTasksByWorkspace(workspaceId);
     },
 
     deleteTask(workspaceId, taskId) {

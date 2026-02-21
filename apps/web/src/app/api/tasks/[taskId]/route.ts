@@ -19,6 +19,10 @@ const updateTaskSchema = z.object({
   difficulty: z.number().min(1).max(5).optional(),
   checklist: z.array(z.string()).optional(),
   repeat: z.enum(["none", "daily", "weekly"]).optional(),
+  sprintKey: z.string().min(1).max(120).optional(),
+  isBlocked: z.boolean().optional(),
+  blockedReason: z.string().max(500).optional(),
+  sortOrder: z.number().min(0).optional(),
 });
 
 type TaskByIdDeps = {
@@ -86,6 +90,10 @@ export function createTaskByIdHandlers(deps: TaskByIdDeps) {
           difficulty: payload.difficulty,
           checklist: payload.checklist,
           repeat: payload.repeat,
+          sprintKey: payload.sprintKey,
+          isBlocked: payload.isBlocked,
+          blockedReason: payload.blockedReason,
+          sortOrder: payload.sortOrder,
         });
 
         if (!task) return Response.json({ message: "NOT_FOUND" }, { status: 404 });
