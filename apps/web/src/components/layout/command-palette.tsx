@@ -68,12 +68,7 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
                 className="flex items-center justify-between rounded-xl border border-transparent px-3 py-2 text-sm text-[var(--ink-default)] transition hover:border-[var(--line-default)] hover:bg-[var(--surface-soft)]"
               >
                 <span>{item.label}</span>
-                <span
-                  className="inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-[var(--line-soft)] bg-[var(--surface-base)] px-1 text-[11px] font-semibold text-[var(--ink-subtle)]"
-                  aria-hidden="true"
-                >
-                  {item.icon}
-                </span>
+                <span className="text-xs text-[var(--ink-subtle)]">이동</span>
               </Link>
             </li>
           ))}

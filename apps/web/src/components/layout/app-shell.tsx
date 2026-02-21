@@ -107,7 +107,7 @@ export function AppShell({
     return matched?.label ?? "협업 공간";
   }, [navItems, pathname]);
 
-  const sidebarWidthClass = collapsed ? "lg:w-20" : "lg:w-72";
+  const sidebarWidthClass = collapsed ? "lg:w-28" : "lg:w-72";
   const roleLabel = role ? ROLE_COPY[role] : "권한 미확인";
   const toggleLabel = collapsed ? "사이드바 펼치기" : "사이드바 접기";
 
