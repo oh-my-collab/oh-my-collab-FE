@@ -1,79 +1,72 @@
-const METRICS = [
-  { label: "Active goals", value: "-" },
-  { label: "Average progress", value: "-" },
-  { label: "At-risk goals", value: "-" },
-] as const;
-
 const ROADMAP = [
-  { goal: "사용자 온보딩 완성", owner: "PM", progress: 62 },
-  { goal: "작업 보드 API 안정화", owner: "Backend", progress: 44 },
-  { goal: "문서 템플릿 운영", owner: "Ops", progress: 71 },
+  {
+    goal: "온보딩 전환율 개선",
+    owner: "PM",
+    targetDate: "2026-03-15",
+    progress: 62,
+  },
+  {
+    goal: "작업 API 안정화",
+    owner: "Backend",
+    targetDate: "2026-03-08",
+    progress: 47,
+  },
+  {
+    goal: "운영 문서 체계화",
+    owner: "Ops",
+    targetDate: "2026-03-22",
+    progress: 71,
+  },
 ] as const;
 
 export default function GoalsPage() {
   return (
-    <main className="space-y-6">
-      <header className="surface-card px-6 py-7 md:px-8">
-        <p className="page-kicker">Planning / Roadmap</p>
-        <h1 className="page-title">Goals & Key Results</h1>
-        <p className="page-subtitle">
-          노션식 목표 문서와 지라식 실행 상태를 연결해 KR 진행률을 추적합니다.
+    <main className="space-y-8">
+      <header className="border-b border-[var(--border)] pb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-700">
+          Planning
         </p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          {METRICS.map((metric) => (
-            <article key={metric.label} className="rounded-xl border border-[var(--border)] bg-[#fbfcff] p-4">
-              <p className="text-sm text-slate-500">{metric.label}</p>
-              <p className="stat-value">{metric.value}</p>
-            </article>
-          ))}
-        </div>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+          Goals &amp; Key Results
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm text-slate-600">
+          목표와 KR 진행률을 한 화면에서 추적합니다. 주기별 변경 이력은 관리자 평가 참고
+          자료로 자동 반영됩니다.
+        </p>
       </header>
 
-      <section className="grid gap-4 lg:grid-cols-[1.55fr_1fr]">
-        <article className="surface-card p-6">
-          <div className="table-head flex items-center justify-between gap-3">
-            <h2 className="section-title">Roadmap Table</h2>
-            <span className="jira-badge">Quarterly</span>
-          </div>
-
-          <div className="table-head table-row text-xs font-semibold uppercase tracking-[0.07em] text-slate-500">
-            <span>Goal</span>
-            <span>Owner</span>
-            <span>Progress</span>
-          </div>
-
-          <div>
+      <section className="overflow-x-auto border border-[var(--border)] bg-white">
+        <table className="min-w-full border-collapse text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-[0.08em] text-slate-500">
+            <tr>
+              <th className="px-4 py-3">Goal</th>
+              <th className="px-4 py-3">Owner</th>
+              <th className="px-4 py-3">Target Date</th>
+              <th className="px-4 py-3">Progress</th>
+            </tr>
+          </thead>
+          <tbody>
             {ROADMAP.map((item) => (
-              <div key={item.goal} className="table-row text-sm">
-                <span className="font-medium text-slate-800">{item.goal}</span>
-                <span className="text-slate-600">{item.owner}</span>
-                <span className="text-slate-700">{item.progress}%</span>
-              </div>
+              <tr key={item.goal} className="border-t border-[var(--border)]">
+                <td className="px-4 py-3 font-medium text-slate-900">{item.goal}</td>
+                <td className="px-4 py-3 text-slate-700">{item.owner}</td>
+                <td className="px-4 py-3 text-slate-600">{item.targetDate}</td>
+                <td className="px-4 py-3">
+                  <div className="w-full max-w-xs">
+                    <div className="h-2 w-full overflow-hidden rounded bg-slate-200">
+                      <span
+                        className="block h-full bg-blue-600"
+                        style={{ width: `${item.progress}%` }}
+                        aria-hidden="true"
+                      />
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{item.progress}%</p>
+                  </div>
+                </td>
+              </tr>
             ))}
-          </div>
-        </article>
-
-        <article className="surface-card p-6">
-          <div className="table-head flex items-center justify-between gap-3">
-            <h2 className="section-title">KR Progress</h2>
-            <span className="chip">Live</span>
-          </div>
-          <ul className="space-y-3">
-            {ROADMAP.map((item) => (
-              <li key={item.goal} className="space-y-2 rounded-lg border border-[var(--border)] p-3">
-                <p className="text-sm font-semibold text-slate-800">{item.goal}</p>
-                <div className="progress-track">
-                  <span
-                    className="progress-fill"
-                    style={{ width: `${item.progress}%` }}
-                    aria-hidden="true"
-                  />
-                </div>
-                <p className="text-xs text-slate-500">{item.progress}% complete</p>
-              </li>
-            ))}
-          </ul>
-        </article>
+          </tbody>
+        </table>
       </section>
     </main>
   );

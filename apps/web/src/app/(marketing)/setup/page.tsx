@@ -3,109 +3,112 @@ import Link from "next/link";
 const STEPS = [
   {
     title: "Fork template",
-    description:
-      "팀 전용 저장소를 만든 뒤 README와 .env.example 파일을 먼저 검토합니다.",
+    description: "저장소를 복제하고 기본 프로젝트 구조를 준비합니다.",
   },
   {
     title: "Vercel Import",
-    description:
-      "새 프로젝트를 Import하고 빌드 명령어, 루트 디렉터리, 브랜치 연결을 확인합니다.",
+    description: "배포 프로젝트를 연결하고 브랜치 빌드 설정을 구성합니다.",
   },
   {
     title: "Env setup",
-    description:
-      "Supabase URL/Anon Key/Service Key를 채워 배포 환경과 로컬 환경을 동일하게 맞춥니다.",
+    description: "Supabase와 인증 환경 변수를 설정합니다.",
   },
   {
     title: "DB migration",
-    description:
-      "초기 스키마와 인사이트 SQL 마이그레이션을 순서대로 적용해 데이터 구조를 준비합니다.",
+    description: "기본 스키마와 평가/관리자 스키마를 순서대로 적용합니다.",
   },
   {
     title: "Workspace init",
-    description:
-      "워크스페이스를 생성하고 기본 문서, 태스크, 목표를 넣어 첫 주 운영을 시작합니다.",
+    description: "초기 워크스페이스를 만들고 팀 운영 데이터를 입력합니다.",
   },
+] as const;
+
+const DELIVERY_QUEUE = [
+  { title: "Onboarding docs check", status: "To Do", owner: "PM" },
+  { title: "Infra env validate", status: "In Progress", owner: "Ops" },
+  { title: "Workspace kickoff", status: "Ready", owner: "Lead" },
 ] as const;
 
 const CHECKLIST = [
   "프로덕션 환경 변수 누락 없음",
-  "RLS 정책 적용 확인",
+  "RLS 정책 및 권한 정책 검증 완료",
   "샘플 데이터 시드 실행 완료",
-] as const;
-
-const DELIVERY_BOARD = [
-  { title: "Onboarding Docs", state: "To Do", owner: "PM" },
-  { title: "Infra Validation", state: "In Progress", owner: "DevOps" },
-  { title: "Workspace Kickoff", state: "Ready", owner: "Team Lead" },
 ] as const;
 
 export default function SetupPage() {
   return (
-    <main className="space-y-5">
-      <header className="surface-card-muted px-6 py-8 md:px-8">
-        <p className="page-kicker">Onboarding</p>
-        <h1 className="page-title">15-Minute Team Setup</h1>
-        <p className="page-subtitle">
-          Follow this checklist to launch your own no-subscription collaboration
-          workspace.
+    <main className="space-y-8">
+      <header className="border-b border-[var(--border)] pb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-700">
+          Onboarding
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/tasks" className="btn-primary">
-            Open Sprint Board
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
+          15-Minute Team Setup
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm text-slate-600">
+          팀 협업 환경을 빠르게 시작하기 위한 초기 설정 순서입니다. 설정 완료 후 바로
+          작업/문서/목표 운영을 시작할 수 있습니다.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Link
+            href="/tasks"
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Open Tasks
           </Link>
-          <Link href="/docs" className="btn-secondary">
-            Open Docs Space
+          <Link
+            href="/admin"
+            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Open Admin
           </Link>
         </div>
       </header>
 
-      <section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <article className="surface-card p-5 md:p-6">
-          <div className="table-head flex items-center justify-between gap-3">
-            <h2 className="section-title">Setup Timeline</h2>
-            <span className="jira-badge">5 Steps</span>
-          </div>
-          <ol className="space-y-3">
+      <section className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Setup Timeline</h2>
+          <ol className="mt-3 divide-y divide-[var(--border)] border-y border-[var(--border)]">
             {STEPS.map((step, index) => (
-              <li key={step.title} className="notion-row">
-                <div className="min-w-0">
-                  <p className="section-title text-[0.98rem]">{step.title}</p>
-                  <p className="muted-copy mt-1 text-sm">{step.description}</p>
+              <li key={step.title} className="grid gap-2 py-3 md:grid-cols-[120px_1fr]">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-700">
+                  Step {index + 1}
+                </p>
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{step.title}</p>
+                  <p className="mt-1 text-sm text-slate-600">{step.description}</p>
                 </div>
-                <span className="chip">STEP {index + 1}</span>
               </li>
             ))}
           </ol>
-        </article>
+        </div>
 
-        <article className="surface-card p-5 md:p-6">
-          <div className="table-head flex items-center justify-between gap-3">
-            <h2 className="section-title">Delivery Queue</h2>
-            <span className="jira-badge">Jira-style</span>
-          </div>
-          <ul className="space-y-2">
-            {DELIVERY_BOARD.map((item) => (
-              <li key={item.title} className="kanban-item space-y-2">
-                <p className="text-sm font-semibold text-slate-800">{item.title}</p>
-                <p className="text-xs text-slate-500">Owner: {item.owner}</p>
-                <span className="jira-badge">{item.state}</span>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Delivery Queue</h2>
+          <ul className="mt-3 space-y-2">
+            {DELIVERY_QUEUE.map((item) => (
+              <li key={item.title} className="rounded border border-[var(--border)] bg-white px-3 py-2">
+                <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                <p className="mt-1 text-xs text-slate-500">{item.owner}</p>
+                <span className="mt-2 inline-flex rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-600">
+                  {item.status}
+                </span>
               </li>
             ))}
           </ul>
-        </article>
+        </div>
       </section>
 
-      <section className="surface-card p-5 md:p-6">
-        <div className="table-head flex items-center justify-between gap-3">
-          <h2 className="section-title">Pre-flight Check</h2>
-          <span className="jira-badge">Required</span>
-        </div>
-        <ul className="space-y-2 text-sm">
+      <section>
+        <h2 className="text-lg font-semibold text-slate-900">Pre-flight Check</h2>
+        <ul className="mt-3 space-y-2">
           {CHECKLIST.map((item) => (
-            <li key={item} className="flex items-start gap-2 text-slate-700">
-              <span className="chip mt-0.5">OK</span>
-              <span className="muted-copy">{item}</span>
+            <li
+              key={item}
+              className="flex items-start gap-2 border-l-2 border-blue-500 pl-3 text-sm text-slate-700"
+            >
+              <span className="mt-0.5 inline-block h-2 w-2 rounded-full bg-blue-500" />
+              <span>{item}</span>
             </li>
           ))}
         </ul>

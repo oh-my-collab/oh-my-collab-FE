@@ -1,73 +1,92 @@
-const COLUMNS = [
-  {
-    key: "todo",
-    label: "To do",
-    description: "아직 시작하지 않은 작업을 우선순위로 정리합니다.",
-  },
-  {
-    key: "in_progress",
-    label: "In progress",
-    description: "현재 담당자가 진행 중인 작업을 추적합니다.",
-  },
-  {
-    key: "done",
-    label: "Done",
-    description: "완료된 결과물을 검토하고 기록을 남깁니다.",
-  },
-];
-
-const SUMMARY = [
-  { label: "Open tasks", value: "-", helper: "Backlog + Ready" },
-  { label: "Due this week", value: "-", helper: "Sprint target" },
-  { label: "Blocked", value: "-", helper: "Needs review" },
+const BOARD_COLUMNS = [
+  { key: "todo", label: "To Do" },
+  { key: "in_progress", label: "In Progress" },
+  { key: "done", label: "Done" },
 ] as const;
 
-const SAMPLE_ITEMS = [
-  { title: "Onboarding flow polish", owner: "Designer", lane: "todo" },
-  { title: "API docs sync", owner: "Backend", lane: "in_progress" },
-  { title: "Goal dashboard copy", owner: "PM", lane: "done" },
+const TASK_SAMPLES = [
+  {
+    id: "task-001",
+    title: "요구사항 정리 문서 업데이트",
+    assignee: "PM",
+    due: "2026-02-23",
+    status: "todo",
+  },
+  {
+    id: "task-002",
+    title: "API 계약 검토 및 스키마 확정",
+    assignee: "Backend",
+    due: "2026-02-24",
+    status: "in_progress",
+  },
+  {
+    id: "task-003",
+    title: "배포 체크리스트 검증 완료",
+    assignee: "Ops",
+    due: "2026-02-20",
+    status: "done",
+  },
 ] as const;
 
 export default function TasksPage() {
   return (
-    <main className="space-y-6">
-      <header className="surface-card px-6 py-7 md:px-8">
-        <p className="page-kicker">Execution / Sprint Board</p>
-        <h1 className="page-title">Kanban Tasks</h1>
-        <p className="page-subtitle">
-          Jira-style 보드 구조에 문서 컨텍스트를 연결해 실행 상태를 빠르게 추적합니다.
+    <main className="space-y-8">
+      <header className="border-b border-[var(--border)] pb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-700">
+          Execution
         </p>
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          {SUMMARY.map((item) => (
-            <article key={item.label} className="rounded-xl border border-[var(--border)] bg-[#fbfcff] p-4">
-              <p className="text-sm text-slate-500">{item.label}</p>
-              <p className="stat-value">{item.value}</p>
-              <p className="mt-1 text-xs text-slate-500">{item.helper}</p>
-            </article>
-          ))}
-        </div>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">Tasks</h1>
+        <p className="mt-2 max-w-3xl text-sm text-slate-600">
+          팀의 실행 흐름을 보드와 목록으로 동시에 확인합니다. 진행 상태는 관리자 평가
+          주기에서 참고 지표로 활용됩니다.
+        </p>
       </header>
 
-      <section className="grid gap-4 xl:grid-cols-3">
-        {COLUMNS.map((column) => (
-          <article key={column.key} className="surface-card p-5">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="section-title">{column.label}</h2>
-              <span className="jira-badge">{column.key.replace("_", " ")}</span>
-            </div>
-            <p className="muted-copy mt-2 text-sm">{column.description}</p>
+      <section className="overflow-x-auto border border-[var(--border)] bg-white">
+        <table className="min-w-full border-collapse text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-[0.08em] text-slate-500">
+            <tr>
+              <th className="px-4 py-3">Task</th>
+              <th className="px-4 py-3">Assignee</th>
+              <th className="px-4 py-3">Due</th>
+              <th className="px-4 py-3">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {TASK_SAMPLES.map((task) => (
+              <tr key={task.id} className="border-t border-[var(--border)]">
+                <td className="px-4 py-3 font-medium text-slate-900">{task.title}</td>
+                <td className="px-4 py-3 text-slate-600">{task.assignee}</td>
+                <td className="px-4 py-3 text-slate-600">{task.due}</td>
+                <td className="px-4 py-3 text-slate-700">{task.status}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
-            <div className="kanban-lane mt-4 space-y-2">
-              {SAMPLE_ITEMS.filter((item) => item.lane === column.key).map((item) => (
-                <article key={item.title} className="kanban-item">
-                  <p className="text-sm font-semibold text-slate-800">{item.title}</p>
-                  <p className="mt-1 text-xs text-slate-500">{item.owner}</p>
-                </article>
-              ))}
-              <div className="rounded-md border border-dashed border-[var(--border)] px-3 py-4 text-center text-xs text-slate-500">
-                No tasks yet
-              </div>
+      <section className="grid gap-4 xl:grid-cols-3">
+        {BOARD_COLUMNS.map((column) => (
+          <article key={column.key} className="rounded-lg border border-[var(--border)] bg-white p-3">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+              <h2 className="text-sm font-semibold text-slate-900">{column.label}</h2>
+              <span className="text-xs text-slate-500">
+                {
+                  TASK_SAMPLES.filter((item) => item.status === column.key).length
+                }{" "}
+                items
+              </span>
             </div>
+            <ul className="mt-3 space-y-2">
+              {TASK_SAMPLES.filter((item) => item.status === column.key).map((item) => (
+                <li key={item.id} className="rounded border border-[var(--border)] px-3 py-2">
+                  <p className="text-sm font-medium text-slate-800">{item.title}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {item.assignee} · due {item.due}
+                  </p>
+                </li>
+              ))}
+            </ul>
           </article>
         ))}
       </section>

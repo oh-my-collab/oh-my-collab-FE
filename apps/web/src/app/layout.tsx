@@ -6,8 +6,7 @@ export const metadata: Metadata = {
     default: "oh-my-collab",
     template: "%s | oh-my-collab",
   },
-  description:
-    "Notion-style documentation and Jira-style execution in one workspace.",
+  description: "팀 협업 실행 데이터와 관리자 평가 참고자료를 통합 관리하는 워크스페이스.",
 };
 
 export default function RootLayout({

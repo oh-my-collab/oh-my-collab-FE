@@ -1,74 +1,62 @@
-const METRICS = [
-  { label: "Weekly Done Tasks", value: "-" },
-  { label: "Goal Achievement Rate", value: "-" },
-  { label: "Upcoming Due", value: "-" },
-] as const;
-
-const ACTIVITY = [
-  { name: "Backend", docs: 4, done: 7, health: "On Track" },
-  { name: "Frontend", docs: 6, done: 5, health: "At Risk" },
-  { name: "Ops", docs: 2, done: 3, health: "On Track" },
+const TEAM_HEALTH = [
+  { team: "Backend", docs: 4, done: 7, goals: 5, status: "On Track" },
+  { team: "Frontend", docs: 6, done: 5, goals: 4, status: "Watch" },
+  { team: "Ops", docs: 2, done: 3, goals: 3, status: "On Track" },
 ] as const;
 
 export default function InsightsPage() {
   return (
-    <main className="space-y-6">
-      <header className="surface-card px-6 py-7 md:px-8">
-        <p className="page-kicker">Insights / Analytics</p>
-        <h1 className="page-title">Insights</h1>
-        <p className="page-subtitle">
-          문서 활동량과 실행 결과를 같은 시계열 관점에서 보여주는 대시보드입니다.
+    <main className="space-y-8">
+      <header className="border-b border-[var(--border)] pb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-700">
+          Insights
+        </p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">Insights</h1>
+        <p className="mt-2 max-w-3xl text-sm text-slate-600">
+          작업, 문서, 목표 업데이트를 주기 단위로 집계해 팀 운영 신호를 제공합니다.
         </p>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-3">
-        {METRICS.map((metric) => (
-          <article key={metric.label} className="surface-card p-5">
-            <h2 className="text-sm text-slate-500">{metric.label}</h2>
-            <p className="stat-value">{metric.value}</p>
-          </article>
+      <section className="grid gap-3 sm:grid-cols-3">
+        {[
+          ["Weekly Done Tasks", "15"],
+          ["Goal Achievement Rate", "68%"],
+          ["Review Drafts", "4"],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-lg border border-[var(--border)] bg-white px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.08em] text-slate-500">{label}</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+          </div>
         ))}
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.45fr_1fr]">
-        <article className="surface-card p-6">
-          <div className="table-head flex items-center justify-between gap-3">
-            <h2 className="section-title">Contribution Snapshot</h2>
-            <span className="jira-badge">Weekly</span>
-          </div>
-          <div className="table-head table-row text-xs font-semibold uppercase tracking-[0.07em] text-slate-500">
-            <span>Team</span>
-            <span>Docs</span>
-            <span>Done</span>
-          </div>
-          <div>
-            {ACTIVITY.map((item) => (
-              <div key={item.name} className="table-row text-sm">
-                <span className="font-medium text-slate-800">{item.name}</span>
-                <span className="text-slate-700">{item.docs}</span>
-                <span className="text-slate-700">{item.done}</span>
-              </div>
+      <section className="overflow-x-auto border border-[var(--border)] bg-white">
+        <table className="min-w-full border-collapse text-sm">
+          <thead className="bg-slate-50 text-left text-xs uppercase tracking-[0.08em] text-slate-500">
+            <tr>
+              <th className="px-4 py-3">Team</th>
+              <th className="px-4 py-3">Docs</th>
+              <th className="px-4 py-3">Done Tasks</th>
+              <th className="px-4 py-3">Goal Updates</th>
+              <th className="px-4 py-3">Health</th>
+            </tr>
+          </thead>
+          <tbody>
+            {TEAM_HEALTH.map((item) => (
+              <tr key={item.team} className="border-t border-[var(--border)]">
+                <td className="px-4 py-3 font-medium text-slate-900">{item.team}</td>
+                <td className="px-4 py-3 text-slate-700">{item.docs}</td>
+                <td className="px-4 py-3 text-slate-700">{item.done}</td>
+                <td className="px-4 py-3 text-slate-700">{item.goals}</td>
+                <td className="px-4 py-3">
+                  <span className="rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-600">
+                    {item.status}
+                  </span>
+                </td>
+              </tr>
             ))}
-          </div>
-        </article>
-
-        <article className="surface-card p-6">
-          <div className="table-head flex items-center justify-between gap-3">
-            <h2 className="section-title">Health</h2>
-            <span className="chip">Status</span>
-          </div>
-          <ul className="space-y-2">
-            {ACTIVITY.map((item) => (
-              <li key={item.name} className="notion-row">
-                <div>
-                  <p className="text-sm font-semibold text-slate-800">{item.name}</p>
-                  <p className="text-xs text-slate-500">{item.health}</p>
-                </div>
-                <span className="jira-badge">{item.health}</span>
-              </li>
-            ))}
-          </ul>
-        </article>
+          </tbody>
+        </table>
       </section>
     </main>
   );
