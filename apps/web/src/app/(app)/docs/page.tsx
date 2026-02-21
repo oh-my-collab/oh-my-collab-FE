@@ -1,70 +1,144 @@
 import { DOC_TEMPLATES } from "@/lib/docs/templates";
+import type { Doc } from "@/lib/data/collab-store";
+import { getRuntimeCollabStore } from "@/lib/data/store-provider";
+import { resolveWorkspaceContext } from "@/lib/workspace/resolve-workspace-context";
 
-const REVIEW_QUEUE = [
-  { title: "Sprint retrospective", owner: "PM", status: "In Review" },
-  { title: "API changelog", owner: "Backend", status: "To Do" },
-  { title: "Release report", owner: "Ops", status: "Ready" },
-] as const;
+type SearchParams = Record<string, string | string[] | undefined>;
 
-export default function DocsPage() {
+type DocsPageProps = {
+  searchParams: Promise<SearchParams>;
+};
+
+function pickSingleParam(
+  value: string | string[] | undefined
+): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function formatDateTimeLabel(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("ko-KR");
+}
+
+function countUpdatedThisWeek(docs: Doc[]) {
+  const now = new Date();
+  const oneWeekAgo = new Date(now);
+  oneWeekAgo.setDate(now.getDate() - 7);
+  return docs.filter(
+    (doc) => new Date(doc.updatedAt).getTime() >= oneWeekAgo.getTime()
+  ).length;
+}
+
+function getTemplateTitle(templateKey: Doc["templateKey"]) {
+  if (templateKey === "custom") return "사용자 정의";
+  return DOC_TEMPLATES[templateKey].title;
+}
+
+export default async function DocsPage({ searchParams }: DocsPageProps) {
+  const resolvedParams = await searchParams;
+  const preferredWorkspaceId = pickSingleParam(resolvedParams.workspaceId);
+  const workspaceContext = await resolveWorkspaceContext(preferredWorkspaceId);
+  const workspaceId = workspaceContext.workspaceId;
+
+  let docs: Doc[] = [];
+  if (workspaceId) {
+    const store = await getRuntimeCollabStore();
+    docs = await store.listDocsByWorkspace(workspaceId);
+  }
+
+  const sortedDocs = [...docs].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const templateEntries = Object.entries(DOC_TEMPLATES);
+  const updatedThisWeek = countUpdatedThisWeek(sortedDocs);
+
   return (
     <main className="space-y-8">
-      <header className="border-b border-[var(--border)] pb-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-700">
-          Documentation
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">Team Docs</h1>
-        <p className="mt-2 max-w-3xl text-sm text-slate-600">
-          문서 작성 이력과 리뷰 상태를 관리합니다. 문서 업데이트 활동은 평가 증거팩에
-          자동으로 집계됩니다.
+      <header className="border-b border-[var(--line-default)] pb-5">
+        <p className="page-kicker">문서</p>
+        <h1 className="page-title">협업 문서 운영</h1>
+        <p className="page-subtitle">
+          문서 작성 이력과 템플릿 기준을 함께 관리합니다. 문서 변경 기록은 평가
+          증거팩의 문서 활동 지표로 자동 반영됩니다.
         </p>
       </header>
 
-      <section className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">Templates</h2>
-            <button
-              type="button"
-              className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              New Document
-            </button>
-          </div>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="kpi-card">
+          <p className="kpi-label">전체 문서</p>
+          <p className="kpi-value">{sortedDocs.length}</p>
+        </article>
+        <article className="kpi-card">
+          <p className="kpi-label">주간 업데이트</p>
+          <p className="kpi-value">{updatedThisWeek}</p>
+        </article>
+        <article className="kpi-card">
+          <p className="kpi-label">템플릿 수</p>
+          <p className="kpi-value">{templateEntries.length}</p>
+        </article>
+        <article className="kpi-card">
+          <p className="kpi-label">워크스페이스</p>
+          <p className="kpi-value text-base">{workspaceId ?? "-"}</p>
+        </article>
+      </section>
 
-          <div className="overflow-x-auto border border-[var(--border)] bg-white">
-            <table className="min-w-full border-collapse text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-[0.08em] text-slate-500">
+      <section className="section-shell">
+        <div className="section-head">
+          <h2 className="section-title">문서 목록</h2>
+          <span className="chip">읽기 연동</span>
+        </div>
+
+        {!workspaceId ? (
+          <p className="empty-note">
+            조회 가능한 워크스페이스가 없습니다. 설정 화면에서 워크스페이스를 먼저
+            생성해 주세요.
+          </p>
+        ) : sortedDocs.length === 0 ? (
+          <p className="empty-note">
+            등록된 문서가 없습니다. API를 통해 문서를 생성하면 자동 반영됩니다.
+          </p>
+        ) : (
+          <div className="list-table-wrap">
+            <table className="list-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">Template</th>
-                  <th className="px-4 py-3">Key</th>
+                  <th>문서 제목</th>
+                  <th>템플릿</th>
+                  <th>최근 수정</th>
+                  <th>수정자</th>
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(DOC_TEMPLATES).map(([key, template]) => (
-                  <tr key={key} className="border-t border-[var(--border)]">
-                    <td className="px-4 py-3 font-medium text-slate-900">{template.title}</td>
-                    <td className="px-4 py-3 text-slate-600">{key}</td>
+                {sortedDocs.map((doc) => (
+                  <tr key={doc.id}>
+                    <td>
+                      <p className="font-semibold text-[var(--ink-strong)]">{doc.title}</p>
+                    </td>
+                    <td>{getTemplateTitle(doc.templateKey)}</td>
+                    <td>{formatDateTimeLabel(doc.updatedAt)}</td>
+                    <td>{doc.updatedBy}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+        )}
+      </section>
 
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-slate-900">Review Queue</h2>
-          <ul className="space-y-2">
-            {REVIEW_QUEUE.map((item) => (
-              <li key={item.title} className="rounded border border-[var(--border)] bg-white px-3 py-2">
-                <p className="text-sm font-semibold text-slate-900">{item.title}</p>
-                <p className="mt-1 text-xs text-slate-500">{item.owner}</p>
-                <span className="mt-2 inline-flex rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-600">
-                  {item.status}
-                </span>
-              </li>
-            ))}
-          </ul>
+      <section className="section-shell">
+        <div className="section-head">
+          <h2 className="section-title">문서 템플릿 가이드</h2>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {templateEntries.map(([templateKey, template]) => (
+            <article
+              key={templateKey}
+              className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-base)] p-3"
+            >
+              <p className="text-sm font-semibold text-[var(--ink-strong)]">{template.title}</p>
+              <p className="mt-1 text-xs text-[var(--ink-subtle)]">키: {templateKey}</p>
+            </article>
+          ))}
         </div>
       </section>
     </main>

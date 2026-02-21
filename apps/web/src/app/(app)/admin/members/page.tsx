@@ -13,16 +13,10 @@ export default async function AdminMembersPage({
 
   return (
     <main className="space-y-8">
-      <header className="border-b border-[var(--border)] pb-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-700">
-          Admin
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-          관리자 권한 관리
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          owner가 멤버를 admin으로 지정하거나 해제할 수 있습니다.
-        </p>
+      <header className="border-b border-[var(--line-default)] pb-5">
+        <p className="page-kicker">관리</p>
+        <h1 className="page-title">관리자 권한 관리</h1>
+        <p className="page-subtitle">오너가 멤버를 관리자로 지정하거나 해제할 수 있습니다.</p>
       </header>
 
       <MembersManager workspaceId={workspaceId} currentRole={role} />

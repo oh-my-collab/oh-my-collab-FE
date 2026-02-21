@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ROLE_COPY } from "@/lib/ui/copy";
 import { requireAdminAccess } from "./admin-guard";
 
 type AdminPageProps = {
@@ -9,6 +10,7 @@ type AdminPageProps = {
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const { workspaceId, role } = await requireAdminAccess(searchParams);
   const query = new URLSearchParams({ workspaceId }).toString();
+  const roleLabel = ROLE_COPY[role];
 
   const links = [
     {
@@ -19,7 +21,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     {
       href: `/admin/members?${query}`,
       title: "관리자 권한",
-      description: "owner가 admin 지정/해제",
+      description: "오너가 관리자 지정/해제",
     },
     {
       href: `/admin/reviews?${query}`,
@@ -35,15 +37,11 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   return (
     <main className="space-y-8">
-      <header className="border-b border-[var(--border)] pb-5">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-700">
-          Admin
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">
-          관리자 콘솔
-        </h1>
-        <p className="mt-2 text-sm text-slate-600">
-          워크스페이스 <strong>{workspaceId}</strong> / 내 권한 <strong>{role}</strong>
+      <header className="border-b border-[var(--line-default)] pb-5">
+        <p className="page-kicker">관리</p>
+        <h1 className="page-title">관리자 콘솔</h1>
+        <p className="page-subtitle">
+          워크스페이스 <strong>{workspaceId}</strong> / 내 권한 <strong>{roleLabel}</strong>
         </p>
       </header>
 
@@ -52,10 +50,10 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           <Link
             key={item.href}
             href={item.href}
-            className="rounded-lg border border-[var(--border)] bg-white px-4 py-4 hover:border-blue-300 hover:bg-blue-50/40"
+            className="rounded-xl border border-[var(--line-default)] bg-[var(--surface-raised)] px-4 py-4 transition hover:border-[var(--primary-400)] hover:bg-[var(--surface-soft)]"
           >
-            <p className="text-base font-semibold text-slate-900">{item.title}</p>
-            <p className="mt-2 text-sm text-slate-600">{item.description}</p>
+            <p className="text-base font-semibold text-[var(--ink-strong)]">{item.title}</p>
+            <p className="mt-2 text-sm text-[var(--ink-muted)]">{item.description}</p>
           </Link>
         ))}
       </section>

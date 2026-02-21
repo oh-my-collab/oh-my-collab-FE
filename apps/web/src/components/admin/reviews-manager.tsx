@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { CYCLE_STATUS_COPY, ROLE_COPY } from "@/lib/ui/copy";
+
 type Cycle = {
   id: string;
   title: string;
@@ -216,43 +218,43 @@ export function ReviewsManager({ workspaceId }: ReviewsManagerProps) {
   return (
     <div className="space-y-6">
       <section className="grid gap-3 md:grid-cols-2">
-        <label className="flex flex-col gap-1 text-sm text-slate-700">
+        <label className="flex flex-col gap-1 text-sm text-[var(--ink-default)]">
           <span>평가 주기</span>
           <select
             value={selectedCycleId}
             onChange={(event) => setSelectedCycleId(event.target.value)}
-            className="rounded-md border border-slate-300 px-3 py-2"
+            className="field-input"
           >
             {cycles.map((cycle) => (
               <option key={cycle.id} value={cycle.id}>
-                {cycle.title} ({cycle.status})
+                {cycle.title} ({CYCLE_STATUS_COPY[cycle.status]})
               </option>
             ))}
           </select>
         </label>
 
-        <label className="flex flex-col gap-1 text-sm text-slate-700">
+        <label className="flex flex-col gap-1 text-sm text-[var(--ink-default)]">
           <span>구성원</span>
           <select
             value={selectedUserId}
             onChange={(event) => setSelectedUserId(event.target.value)}
-            className="rounded-md border border-slate-300 px-3 py-2"
+            className="field-input"
           >
             {selectableMembers.map((member) => (
               <option key={member.userId} value={member.userId}>
-                {member.userId} ({member.role})
+                {member.userId} ({ROLE_COPY[member.role]})
               </option>
             ))}
           </select>
         </label>
       </section>
 
-      <section className="flex flex-wrap gap-2 border-b border-[var(--border)] pb-5">
+      <section className="flex flex-wrap gap-2 border-b border-[var(--line-default)] pb-5">
         <button
           type="button"
           disabled={!selectedCycleId || exporting !== null}
           onClick={() => exportReport("csv")}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+          className="btn-secondary py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
         >
           {exporting === "csv" ? "CSV 내보내는 중..." : "CSV 내보내기"}
         </button>
@@ -260,44 +262,42 @@ export function ReviewsManager({ workspaceId }: ReviewsManagerProps) {
           type="button"
           disabled={!selectedCycleId || exporting !== null}
           onClick={() => exportReport("pdf")}
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+          className="btn-secondary py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
         >
           {exporting === "pdf" ? "PDF 내보내는 중..." : "PDF 내보내기"}
         </button>
       </section>
 
       {loading ? (
-        <p className="text-sm text-slate-500">로딩 중...</p>
+        <p className="muted-copy text-sm">로딩 중...</p>
       ) : !selectedCycleId || !selectedUserId ? (
-        <p className="text-sm text-slate-500">
+        <p className="empty-note">
           리뷰할 주기 또는 구성원이 없습니다. 먼저 평가 주기와 멤버를 확인하세요.
         </p>
       ) : review ? (
         <section className="space-y-5">
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-[var(--border)] bg-white px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.08em] text-slate-500">Score Preview</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-900">
-                {review.scorePreview.toFixed(2)}
-              </p>
+            <div className="kpi-card">
+              <p className="kpi-label">참고 점수</p>
+              <p className="kpi-value">{review.scorePreview.toFixed(2)}</p>
             </div>
-            <div className="rounded-lg border border-[var(--border)] bg-white px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.08em] text-slate-500">상태</p>
-              <p className="mt-2 text-sm text-slate-700">
+            <div className="kpi-card">
+              <p className="kpi-label">상태</p>
+              <p className="mt-2 text-sm text-[var(--ink-default)]">
                 {review.lockedAt
-                  ? `확정됨 (${new Date(review.lockedAt).toLocaleString()})`
+                  ? `확정됨 (${new Date(review.lockedAt).toLocaleString("ko-KR")})`
                   : "초안"}
               </p>
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-[var(--border)] bg-white">
-            <table className="min-w-full border-collapse text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-[0.08em] text-slate-500">
+          <div className="list-table-wrap">
+            <table className="list-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">항목</th>
-                  <th className="px-4 py-3">Raw</th>
-                  <th className="px-4 py-3">Normalized</th>
+                  <th>항목</th>
+                  <th>원시값</th>
+                  <th>정규화값</th>
                 </tr>
               </thead>
               <tbody>
@@ -309,12 +309,10 @@ export function ReviewsManager({ workspaceId }: ReviewsManagerProps) {
                     ["collaboration", "협업"],
                   ] as const
                 ).map(([key, label]) => (
-                  <tr key={key} className="border-t border-[var(--border)]">
-                    <td className="px-4 py-3 font-medium text-slate-900">{label}</td>
-                    <td className="px-4 py-3 text-slate-700">{review.evidencePack.raw[key]}</td>
-                    <td className="px-4 py-3 text-slate-700">
-                      {review.evidencePack.normalized[key].toFixed(4)}
-                    </td>
+                  <tr key={key}>
+                    <td className="font-semibold text-[var(--ink-strong)]">{label}</td>
+                    <td>{review.evidencePack.raw[key]}</td>
+                    <td>{review.evidencePack.normalized[key].toFixed(4)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -322,10 +320,13 @@ export function ReviewsManager({ workspaceId }: ReviewsManagerProps) {
           </div>
 
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-slate-900">증거팩 하이라이트</p>
-            <ul className="space-y-1 text-sm text-slate-700">
+            <p className="text-sm font-semibold text-[var(--ink-strong)]">증거팩 하이라이트</p>
+            <ul className="space-y-1 text-sm text-[var(--ink-default)]">
               {review.evidencePack.highlights.map((line) => (
-                <li key={line} className="rounded border border-[var(--border)] px-3 py-2">
+                <li
+                  key={line}
+                  className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-base)] px-3 py-2"
+                >
                   {line}
                 </li>
               ))}
@@ -333,25 +334,25 @@ export function ReviewsManager({ workspaceId }: ReviewsManagerProps) {
           </div>
 
           <div className="grid gap-4">
-            <label className="flex flex-col gap-1 text-sm text-slate-700">
+            <label className="flex flex-col gap-1 text-sm text-[var(--ink-default)]">
               <span>관리자 메모</span>
               <textarea
                 value={managerNote}
                 disabled={Boolean(review.lockedAt)}
                 onChange={(event) => setManagerNote(event.target.value)}
-                className="min-h-28 rounded-md border border-slate-300 px-3 py-2"
+                className="field-input min-h-28"
                 placeholder="평가 참고 메모"
               />
             </label>
 
-            <label className="flex flex-col gap-1 text-sm text-slate-700">
+            <label className="flex flex-col gap-1 text-sm text-[var(--ink-default)]">
               <span>최종 평점 (수동 입력)</span>
               <input
                 value={finalRating}
                 disabled={Boolean(review.lockedAt)}
                 onChange={(event) => setFinalRating(event.target.value)}
-                className="rounded-md border border-slate-300 px-3 py-2"
-                placeholder="예: A, B+, Meets expectations"
+                className="field-input"
+                placeholder="예: A, B+, 기대수준 충족"
               />
             </label>
 
@@ -360,7 +361,7 @@ export function ReviewsManager({ workspaceId }: ReviewsManagerProps) {
                 type="button"
                 disabled={saving || Boolean(review.lockedAt)}
                 onClick={() => saveReview(false)}
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+                className="btn-secondary py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
               >
                 저장
               </button>
@@ -368,7 +369,7 @@ export function ReviewsManager({ workspaceId }: ReviewsManagerProps) {
                 type="button"
                 disabled={saving || Boolean(review.lockedAt)}
                 onClick={() => saveReview(true)}
-                className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="btn-primary py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
               >
                 확정 및 잠금
               </button>
@@ -376,11 +377,11 @@ export function ReviewsManager({ workspaceId }: ReviewsManagerProps) {
           </div>
         </section>
       ) : (
-        <p className="text-sm text-slate-500">리뷰 데이터를 불러올 수 없습니다.</p>
+        <p className="empty-note">리뷰 데이터를 불러올 수 없습니다.</p>
       )}
 
       {message && (
-        <p className="rounded-md border border-[var(--border)] bg-slate-50 px-3 py-2 text-sm text-slate-700">
+        <p className="rounded-xl border border-[var(--line-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--ink-default)]">
           {message}
         </p>
       )}

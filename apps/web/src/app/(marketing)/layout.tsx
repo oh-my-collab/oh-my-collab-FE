@@ -6,23 +6,23 @@ type MarketingLayoutProps = {
 };
 
 const LINKS = [
-  { href: "/tasks", label: "Tasks" },
-  { href: "/goals", label: "Goals" },
-  { href: "/docs", label: "Docs" },
-  { href: "/insights", label: "Insights" },
-  { href: "/setup", label: "Setup" },
+  { href: "/tasks", label: "작업" },
+  { href: "/goals", label: "목표" },
+  { href: "/docs", label: "문서" },
+  { href: "/insights", label: "인사이트" },
+  { href: "/setup", label: "설정" },
 ];
 
 export default function MarketingLayout({ children }: MarketingLayoutProps) {
   return (
-    <div className="min-h-screen bg-[var(--background)]">
-      <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-white/95 backdrop-blur">
+    <div className="min-h-screen bg-[var(--surface-page)]">
+      <header className="sticky top-0 z-20 border-b border-[var(--line-default)] bg-[var(--surface-raised)]/95 backdrop-blur">
         <div className="flex w-full items-center justify-between gap-4 px-4 py-3 md:px-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-blue-700">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--primary-700)]">
               oh-my-collab
             </p>
-            <p className="mt-1 text-sm font-semibold text-slate-900">
+            <p className="mt-1 text-sm font-semibold text-[var(--ink-strong)]">
               협업 공간 초기 설정
             </p>
           </div>
@@ -32,7 +32,7 @@ export default function MarketingLayout({ children }: MarketingLayoutProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-[var(--line-default)] bg-[var(--surface-raised)] px-3 py-1.5 text-sm text-[var(--ink-default)] transition hover:border-[var(--primary-400)] hover:bg-[var(--surface-soft)]"
               >
                 {item.label}
               </Link>

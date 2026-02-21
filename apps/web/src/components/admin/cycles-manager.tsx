@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { CYCLE_STATUS_COPY } from "@/lib/ui/copy";
+
 type Cycle = {
   id: string;
   title: string;
@@ -157,45 +159,46 @@ export function CyclesManager({ workspaceId }: CyclesManagerProps) {
 
   return (
     <div className="space-y-8">
-      <section className="space-y-4 border-b border-[var(--border)] pb-8">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-900">평가 주기 생성</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            자동 산출 점수는 참고용이며 최종 평점은 관리자 수동 입력으로 확정됩니다.
-          </p>
+      <section className="section-shell">
+        <div className="section-head">
+          <h2 className="section-title">평가 주기 생성</h2>
+          <span className="chip">가중치 총합 100</span>
         </div>
+        <p className="muted-copy text-sm">
+          자동 산출 점수는 참고용이며 최종 평점은 관리자 수동 입력으로 확정됩니다.
+        </p>
 
-        <form onSubmit={onSubmit} className="grid gap-4 xl:grid-cols-2">
-          <label className="flex flex-col gap-1 text-sm text-slate-700 xl:col-span-2">
+        <form onSubmit={onSubmit} className="mt-4 grid gap-4 xl:grid-cols-2">
+          <label className="flex flex-col gap-1 text-sm text-[var(--ink-default)] xl:col-span-2">
             <span>주기 이름</span>
             <input
               required
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              className="rounded-md border border-slate-300 px-3 py-2"
+              className="field-input"
               placeholder="예: 2026 상반기 평가"
             />
           </label>
 
-          <label className="flex flex-col gap-1 text-sm text-slate-700">
+          <label className="flex flex-col gap-1 text-sm text-[var(--ink-default)]">
             <span>시작일</span>
             <input
               required
               type="date"
               value={startDate}
               onChange={(event) => setStartDate(event.target.value)}
-              className="rounded-md border border-slate-300 px-3 py-2"
+              className="field-input"
             />
           </label>
 
-          <label className="flex flex-col gap-1 text-sm text-slate-700">
+          <label className="flex flex-col gap-1 text-sm text-[var(--ink-default)]">
             <span>종료일</span>
             <input
               required
               type="date"
               value={endDate}
               onChange={(event) => setEndDate(event.target.value)}
-              className="rounded-md border border-slate-300 px-3 py-2"
+              className="field-input"
             />
           </label>
 
@@ -203,7 +206,7 @@ export function CyclesManager({ workspaceId }: CyclesManagerProps) {
             {WEIGHT_META.map(({ key, label }) => (
               <label
                 key={key}
-                className="grid gap-2 text-sm text-slate-700 md:grid-cols-[120px_1fr_84px]"
+                className="grid gap-2 text-sm text-[var(--ink-default)] md:grid-cols-[120px_1fr_84px]"
               >
                 <span className="self-center">{label}</span>
                 <input
@@ -219,18 +222,18 @@ export function CyclesManager({ workspaceId }: CyclesManagerProps) {
                   max={100}
                   value={weights[key]}
                   onChange={(event) => updateWeight(key, Number(event.target.value))}
-                  className="rounded-md border border-slate-300 px-2 py-1.5"
+                  className="field-input"
                 />
               </label>
             ))}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 xl:col-span-2">
-            <span className="text-sm text-slate-600">가중치 총합: {totalWeight}</span>
+            <span className="status-chip">가중치 총합: {totalWeight}</span>
             <button
               type="submit"
               disabled={!canSubmit}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               주기 생성
             </button>
@@ -238,31 +241,35 @@ export function CyclesManager({ workspaceId }: CyclesManagerProps) {
         </form>
       </section>
 
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">평가 주기 목록</h2>
+      <section className="section-shell">
+        <div className="section-head">
+          <h2 className="section-title">평가 주기 목록</h2>
+        </div>
         {loading ? (
-          <p className="text-sm text-slate-500">로딩 중...</p>
+          <p className="muted-copy text-sm">로딩 중...</p>
         ) : (
-          <div className="overflow-x-auto border border-[var(--border)] bg-white">
-            <table className="min-w-full border-collapse text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-[0.08em] text-slate-500">
+          <div className="list-table-wrap">
+            <table className="list-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3">주기</th>
-                  <th className="px-4 py-3">기간</th>
-                  <th className="px-4 py-3">상태</th>
-                  <th className="px-4 py-3">작업</th>
+                  <th>주기</th>
+                  <th>기간</th>
+                  <th>상태</th>
+                  <th>작업</th>
                 </tr>
               </thead>
               <tbody>
                 {cycles.map((cycle) => (
-                  <tr key={cycle.id} className="border-t border-[var(--border)]">
-                    <td className="px-4 py-3 font-medium text-slate-900">{cycle.title}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {new Date(cycle.periodStart).toLocaleDateString()} -{" "}
-                      {new Date(cycle.periodEnd).toLocaleDateString()}
+                  <tr key={cycle.id}>
+                    <td className="font-semibold text-[var(--ink-strong)]">{cycle.title}</td>
+                    <td>
+                      {new Date(cycle.periodStart).toLocaleDateString("ko-KR")} -{" "}
+                      {new Date(cycle.periodEnd).toLocaleDateString("ko-KR")}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">{cycle.status}</td>
-                    <td className="px-4 py-3">
+                    <td>
+                      <span className="status-chip">{CYCLE_STATUS_COPY[cycle.status]}</span>
+                    </td>
+                    <td>
                       <div className="flex flex-wrap gap-2">
                         {(["draft", "open", "closed"] as const).map((nextStatus) => (
                           <button
@@ -270,9 +277,9 @@ export function CyclesManager({ workspaceId }: CyclesManagerProps) {
                             type="button"
                             disabled={busyCycleId === cycle.id || cycle.status === nextStatus}
                             onClick={() => updateCycleStatus(cycle.id, nextStatus)}
-                            className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+                            className="btn-secondary px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            {nextStatus}
+                            {CYCLE_STATUS_COPY[nextStatus]}
                           </button>
                         ))}
                       </div>
@@ -281,7 +288,7 @@ export function CyclesManager({ workspaceId }: CyclesManagerProps) {
                 ))}
                 {cycles.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-sm text-slate-500">
+                    <td colSpan={4} className="py-8 text-center text-sm text-[var(--ink-subtle)]">
                       생성된 평가 주기가 없습니다.
                     </td>
                   </tr>
@@ -293,7 +300,7 @@ export function CyclesManager({ workspaceId }: CyclesManagerProps) {
       </section>
 
       {message && (
-        <p className="rounded-md border border-[var(--border)] bg-slate-50 px-3 py-2 text-sm text-slate-700">
+        <p className="rounded-xl border border-[var(--line-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--ink-default)]">
           {message}
         </p>
       )}

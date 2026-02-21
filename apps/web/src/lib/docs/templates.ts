@@ -1,18 +1,18 @@
 export const DOC_TEMPLATES = {
   "meeting-note": {
-    title: "Meeting Note",
+    title: "회의록",
     defaultContent:
-      "## Agenda\n- \n\n## Decisions\n- \n\n## Action Items\n- [ ] ",
+      "## 안건\n- \n\n## 의사결정\n- \n\n## 실행 항목\n- [ ] ",
   },
   "weekly-report": {
-    title: "Weekly Report",
+    title: "주간 리포트",
     defaultContent:
-      "## What we did\n- \n\n## What blocked us\n- \n\n## Next week\n- ",
+      "## 이번 주 진행 내용\n- \n\n## 이슈 및 리스크\n- \n\n## 다음 주 계획\n- ",
   },
   retrospective: {
-    title: "Retrospective",
+    title: "회고",
     defaultContent:
-      "## Keep\n- \n\n## Problem\n- \n\n## Try\n- ",
+      "## 계속할 점\n- \n\n## 개선할 점\n- \n\n## 다음 시도\n- ",
   },
 } as const;
 

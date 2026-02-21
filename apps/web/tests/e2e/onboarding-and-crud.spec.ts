@@ -5,12 +5,12 @@ const E2E_USER_COOKIE = "e2e-user-id=e2e-user-1";
 test("온보딩 페이지에 5단계 체크리스트가 노출된다", async ({ page }) => {
   await page.goto("/setup");
 
-  await expect(page.getByRole("heading", { name: "15-Minute Team Setup" })).toBeVisible();
-  await expect(page.getByText("Fork template")).toBeVisible();
-  await expect(page.getByText("Vercel Import")).toBeVisible();
-  await expect(page.getByText("Env setup")).toBeVisible();
-  await expect(page.getByText("DB migration")).toBeVisible();
-  await expect(page.getByText("Workspace init")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "15분 팀 초기 설정" })).toBeVisible();
+  await expect(page.getByText("저장소 복제 및 기본 브랜치 준비")).toBeVisible();
+  await expect(page.getByText("Vercel 프로젝트 연결")).toBeVisible();
+  await expect(page.getByText("환경 변수 및 인증 설정")).toBeVisible();
+  await expect(page.getByText("데이터베이스 마이그레이션 적용")).toBeVisible();
+  await expect(page.getByText("워크스페이스 초기화 및 샘플 데이터 점검")).toBeVisible();
 });
 
 test("workspace -> docs/tasks/goals -> insights CRUD 흐름이 동작한다", async ({
