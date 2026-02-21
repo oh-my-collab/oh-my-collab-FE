@@ -9,7 +9,7 @@ const palette = {
   inkStrong: "#1a2747",
   inkDefault: "#223256",
   inkMuted: "#4b5f87",
-  inkSubtle: "#5f7196",
+  inkSubtle: "#5e7095",
   primary700: "#1b45aa",
 };
 
