@@ -7,12 +7,12 @@ export type SidebarItem = {
   path: string;
   href: string;
   label: string;
-  shortLabel: string;
-  shortcut: string;
+  icon: string;
   adminOnly?: boolean;
 };
 
 type SidebarProps = {
+  id?: string;
   collapsed: boolean;
   canViewAdmin: boolean;
   items: SidebarItem[];
@@ -20,6 +20,7 @@ type SidebarProps = {
 };
 
 export function Sidebar({
+  id,
   collapsed,
   canViewAdmin,
   items,
@@ -28,7 +29,7 @@ export function Sidebar({
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-col gap-1 py-3">
+    <nav id={id} className="flex flex-col gap-1 py-3">
       {items
         .filter((item) => !item.adminOnly || canViewAdmin)
         .map((item) => {
@@ -48,15 +49,18 @@ export function Sidebar({
               title={collapsed ? item.label : undefined}
             >
               {collapsed ? (
-                <span className="inline-flex w-full items-center justify-center font-semibold">
-                  {item.shortLabel}
+                <span
+                  className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--line-soft)] bg-[var(--surface-base)] px-2 py-1 text-xs font-semibold text-[var(--ink-subtle)]"
+                  aria-hidden="true"
+                >
+                  {item.icon}
                 </span>
               ) : (
-                <span className="flex items-center justify-between gap-2">
-                  <span>{item.label}</span>
-                  <span className="rounded border border-[var(--line-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--ink-subtle)]">
-                    {item.shortcut}
+                <span className="flex items-center gap-2">
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-[var(--line-soft)] bg-[var(--surface-base)] px-1 text-[11px] font-semibold text-[var(--ink-subtle)]">
+                    {item.icon}
                   </span>
+                  <span>{item.label}</span>
                 </span>
               )}
             </Link>

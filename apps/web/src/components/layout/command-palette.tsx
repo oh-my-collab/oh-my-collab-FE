@@ -32,9 +32,7 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
   const filteredItems = useMemo(() => {
     if (!query.trim()) return items;
     const normalizedQuery = query.trim().toLowerCase();
-    return items.filter((item) =>
-      `${item.label} ${item.shortcut}`.toLowerCase().includes(normalizedQuery)
-    );
+    return items.filter((item) => item.label.toLowerCase().includes(normalizedQuery));
   }, [items, query]);
 
   return (
@@ -70,8 +68,11 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
                 className="flex items-center justify-between rounded-xl border border-transparent px-3 py-2 text-sm text-[var(--ink-default)] transition hover:border-[var(--line-default)] hover:bg-[var(--surface-soft)]"
               >
                 <span>{item.label}</span>
-                <span className="rounded border border-[var(--line-soft)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--ink-subtle)]">
-                  {item.shortcut}
+                <span
+                  className="inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-[var(--line-soft)] bg-[var(--surface-base)] px-1 text-[11px] font-semibold text-[var(--ink-subtle)]"
+                  aria-hidden="true"
+                >
+                  {item.icon}
                 </span>
               </Link>
             </li>

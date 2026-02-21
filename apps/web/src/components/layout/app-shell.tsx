@@ -10,6 +10,29 @@ import { CommandPalette } from "./command-palette";
 import { Sidebar, type SidebarItem } from "./sidebar";
 
 const STORAGE_KEY = "omc.sidebar.collapsed";
+const SIDEBAR_NAV_ID = "app-sidebar-nav";
+
+function ChevronIcon({ direction }: { direction: "left" | "right" }) {
+  const path =
+    direction === "left"
+      ? "M10.5 4.5L6 9l4.5 4.5"
+      : "M7.5 4.5L12 9l-4.5 4.5";
+
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 18 18"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={path} />
+    </svg>
+  );
+}
 
 function createWorkspaceHref(path: string, workspaceId?: string) {
   if (!workspaceId) return path;
@@ -74,6 +97,7 @@ export function AppShell({
 
   const sidebarWidthClass = collapsed ? "lg:w-20" : "lg:w-72";
   const roleLabel = role ? ROLE_COPY[role] : "권한 미확인";
+  const toggleLabel = collapsed ? "사이드바 펼치기" : "사이드바 접기";
 
   const toggleCollapse = () => {
     setCollapsed((prev) => {
@@ -100,15 +124,19 @@ export function AppShell({
             </div>
             <button
               type="button"
-              aria-label="사이드바 접기"
-              className="rounded-md border border-[var(--line-default)] px-2 py-1 text-xs text-[var(--ink-default)] hover:bg-[var(--surface-soft)]"
+              aria-label={toggleLabel}
+              aria-controls={SIDEBAR_NAV_ID}
+              aria-expanded={!collapsed}
+              title={toggleLabel}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--line-default)] text-[var(--ink-default)] transition hover:bg-[var(--surface-soft)]"
               onClick={toggleCollapse}
             >
-              {collapsed ? ">" : "<"}
+              <ChevronIcon direction={collapsed ? "right" : "left"} />
             </button>
           </div>
 
           <Sidebar
+            id={SIDEBAR_NAV_ID}
             collapsed={collapsed}
             canViewAdmin={canViewAdmin}
             items={navItems}
