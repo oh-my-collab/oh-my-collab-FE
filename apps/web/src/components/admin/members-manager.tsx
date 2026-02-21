@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { ROLE_COPY } from "@/lib/ui/copy";
+
 type Member = {
   workspaceId: string;
   userId: string;
@@ -94,19 +96,19 @@ export function MembersManager({ workspaceId, currentRole }: MembersManagerProps
   return (
     <div className="space-y-5">
       {!isOwner && (
-        <p className="rounded-md border border-[var(--border)] bg-slate-50 px-3 py-2 text-sm text-slate-700">
-          현재 계정은 admin 권한입니다. 관리자 지정/해제는 owner만 수행할 수 있습니다.
+        <p className="rounded-xl border border-[var(--line-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--ink-default)]">
+          현재 계정은 관리자 권한입니다. 관리자 지정/해제는 오너만 수행할 수 있습니다.
         </p>
       )}
 
-      <div className="overflow-x-auto border border-[var(--border)] bg-white">
-        <table className="min-w-full border-collapse text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-[0.08em] text-slate-500">
+      <div className="list-table-wrap">
+        <table className="list-table">
+          <thead>
             <tr>
-              <th className="px-4 py-3">사용자</th>
-              <th className="px-4 py-3">현재 권한</th>
-              <th className="px-4 py-3">권한 설정</th>
-              <th className="px-4 py-3">적용</th>
+              <th>사용자</th>
+              <th>현재 권한</th>
+              <th>권한 설정</th>
+              <th>적용</th>
             </tr>
           </thead>
           <tbody>
@@ -114,12 +116,12 @@ export function MembersManager({ workspaceId, currentRole }: MembersManagerProps
               const isOwnerRow = member.role === "owner";
               const targetValue = roleDraft[member.userId] ?? "member";
               return (
-                <tr key={member.userId} className="border-t border-[var(--border)]">
-                  <td className="px-4 py-3 font-medium text-slate-900">{member.userId}</td>
-                  <td className="px-4 py-3 text-slate-700">{member.role}</td>
-                  <td className="px-4 py-3">
+                <tr key={member.userId}>
+                  <td className="font-semibold text-[var(--ink-strong)]">{member.userId}</td>
+                  <td>{ROLE_COPY[member.role]}</td>
+                  <td>
                     {isOwnerRow ? (
-                      <span className="text-slate-400">owner 고정</span>
+                      <span className="text-[var(--ink-subtle)]">오너 고정</span>
                     ) : (
                       <select
                         value={targetValue}
@@ -130,14 +132,14 @@ export function MembersManager({ workspaceId, currentRole }: MembersManagerProps
                             [member.userId]: event.target.value as "admin" | "member",
                           }))
                         }
-                        className="rounded border border-slate-300 px-2 py-1"
+                        className="field-input py-1"
                       >
-                        <option value="member">member</option>
-                        <option value="admin">admin</option>
+                        <option value="member">구성원</option>
+                        <option value="admin">관리자</option>
                       </select>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td>
                     {isOwnerRow ? (
                       "-"
                     ) : (
@@ -145,7 +147,7 @@ export function MembersManager({ workspaceId, currentRole }: MembersManagerProps
                         type="button"
                         disabled={!isOwner || busyUserId === member.userId}
                         onClick={() => updateRole(member.userId)}
-                        className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+                        className="btn-secondary px-2.5 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         저장
                       </button>
@@ -156,7 +158,7 @@ export function MembersManager({ workspaceId, currentRole }: MembersManagerProps
             })}
             {orderedMembers.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-sm text-slate-500">
+                <td colSpan={4} className="py-8 text-center text-sm text-[var(--ink-subtle)]">
                   등록된 멤버가 없습니다.
                 </td>
               </tr>
@@ -166,7 +168,7 @@ export function MembersManager({ workspaceId, currentRole }: MembersManagerProps
       </div>
 
       {message && (
-        <p className="rounded-md border border-[var(--border)] bg-slate-50 px-3 py-2 text-sm text-slate-700">
+        <p className="rounded-xl border border-[var(--line-default)] bg-[var(--surface-base)] px-3 py-2 text-sm text-[var(--ink-default)]">
           {message}
         </p>
       )}
