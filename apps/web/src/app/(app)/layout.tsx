@@ -13,9 +13,11 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   return (
     <AppShell
       canViewAdmin={workspaceContext.canViewAdmin}
+      adminWorkspaceId={workspaceContext.adminWorkspaceId ?? undefined}
       workspaceId={workspaceContext.workspaceId ?? undefined}
       workspaceName={workspaceContext.workspaceName}
       role={workspaceContext.role}
+      workspaces={workspaceContext.workspaces}
     >
       {children}
     </AppShell>

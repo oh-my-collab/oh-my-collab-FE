@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
-import type { WorkspaceMembership } from "@/lib/data/collab-store";
+import type {
+  UserWorkspaceSummary,
+  WorkspaceMembership,
+} from "@/lib/data/collab-store";
 import { APP_NAV_ITEMS, ROLE_COPY } from "@/lib/ui/copy";
 
 import { CommandPalette } from "./command-palette";
@@ -42,25 +45,31 @@ function createWorkspaceHref(path: string, workspaceId?: string) {
 type AppShellProps = {
   children: React.ReactNode;
   canViewAdmin: boolean;
+  adminWorkspaceId?: string;
   workspaceId?: string;
   workspaceName: string;
   role: WorkspaceMembership["role"] | null;
+  workspaces: UserWorkspaceSummary[];
 };
 
 export function AppShell({
   children,
   canViewAdmin,
+  adminWorkspaceId,
   workspaceId,
   workspaceName,
   role,
+  workspaces,
 }: AppShellProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(STORAGE_KEY) === "1";
   });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const canAccessAdmin = canViewAdmin || Boolean(adminWorkspaceId);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -81,9 +90,12 @@ export function AppShell({
     () =>
       APP_NAV_ITEMS.map((item) => ({
         ...item,
-        href: createWorkspaceHref(item.path, workspaceId),
+        href: createWorkspaceHref(
+          item.path,
+          item.adminOnly ? adminWorkspaceId ?? workspaceId : workspaceId
+        ),
       })),
-    [workspaceId]
+    [adminWorkspaceId, workspaceId]
   );
 
   const currentLabel = useMemo(() => {
@@ -105,6 +117,12 @@ export function AppShell({
       window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
       return next;
     });
+  };
+
+  const changeWorkspace = (nextWorkspaceId: string) => {
+    const target = createWorkspaceHref("/overview", nextWorkspaceId);
+    router.push(target);
+    setMobileOpen(false);
   };
 
   return (
@@ -138,7 +156,7 @@ export function AppShell({
           <Sidebar
             id={SIDEBAR_NAV_ID}
             collapsed={collapsed}
-            canViewAdmin={canViewAdmin}
+            canViewAdmin={canAccessAdmin}
             items={navItems}
           />
         </aside>
@@ -165,6 +183,22 @@ export function AppShell({
             <div className="hidden items-center gap-2 md:flex">
               <span className="status-chip">{workspaceName}</span>
               <span className="status-chip">{roleLabel}</span>
+              {workspaces.length > 1 && (
+                <label className="inline-flex items-center gap-2 rounded-xl border border-[var(--line-default)] bg-[var(--surface-base)] px-2 py-1 text-xs text-[var(--ink-default)]">
+                  <span>워크스페이스</span>
+                  <select
+                    value={workspaceId ?? workspaces[0]?.workspaceId ?? ""}
+                    onChange={(event) => changeWorkspace(event.target.value)}
+                    className="field-input py-1 text-xs"
+                  >
+                    {workspaces.map((workspace) => (
+                      <option key={workspace.workspaceId} value={workspace.workspaceId}>
+                        {workspace.workspaceName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <button
                 type="button"
                 className="btn-secondary py-1.5 text-xs"
@@ -211,7 +245,7 @@ export function AppShell({
             </div>
             <Sidebar
               collapsed={false}
-              canViewAdmin={canViewAdmin}
+              canViewAdmin={canAccessAdmin}
               items={navItems}
               onNavigate={() => setMobileOpen(false)}
             />
@@ -221,7 +255,7 @@ export function AppShell({
 
       {commandOpen && (
         <CommandPalette
-          items={navItems.filter((item) => !item.adminOnly || canViewAdmin)}
+          items={navItems.filter((item) => !item.adminOnly || canAccessAdmin)}
           onClose={() => setCommandOpen(false)}
         />
       )}

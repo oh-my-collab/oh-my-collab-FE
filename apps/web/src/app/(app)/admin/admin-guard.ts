@@ -34,7 +34,7 @@ export async function requireAdminAccess(searchParams: SearchParams) {
     userId
   );
   if (!membership || (membership.role !== "owner" && membership.role !== "admin")) {
-    redirect("/tasks");
+    redirect("/overview");
   }
 
   return {
