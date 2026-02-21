@@ -7,20 +7,19 @@ import type {
 export type AppNavItem = {
   path: string;
   label: string;
-  icon: string;
   adminOnly?: boolean;
 };
 
 export const APP_NAV_ITEMS: AppNavItem[] = [
-  { path: "/overview", label: "요약", icon: "요" },
-  { path: "/tasks", label: "작업", icon: "작" },
-  { path: "/deadlines", label: "마감", icon: "마" },
-  { path: "/team", label: "팀", icon: "팀" },
-  { path: "/goals", label: "목표", icon: "목" },
-  { path: "/docs", label: "문서", icon: "문" },
-  { path: "/insights", label: "인사이트", icon: "인" },
-  { path: "/setup", label: "설정", icon: "설" },
-  { path: "/admin", label: "관리", icon: "관", adminOnly: true },
+  { path: "/overview", label: "요약" },
+  { path: "/tasks", label: "작업" },
+  { path: "/deadlines", label: "마감" },
+  { path: "/team", label: "팀" },
+  { path: "/goals", label: "목표" },
+  { path: "/docs", label: "문서" },
+  { path: "/insights", label: "인사이트" },
+  { path: "/setup", label: "설정" },
+  { path: "/admin", label: "관리", adminOnly: true },
 ];
 
 export const ROLE_COPY: Record<WorkspaceMembership["role"], string> = {

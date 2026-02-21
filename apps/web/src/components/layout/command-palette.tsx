@@ -44,7 +44,12 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
         onClick={onClose}
       />
 
-      <section className="relative z-10 w-full max-w-2xl rounded-2xl border border-[var(--line-default)] bg-[var(--surface-raised)] p-3 shadow-[var(--shadow-pop)]">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-label="빠른 이동 명령 팔레트"
+        className="relative z-10 w-full max-w-2xl rounded-2xl border border-[var(--line-default)] bg-[var(--surface-raised)] p-3 shadow-[var(--shadow-pop)]"
+      >
         <div className="rounded-xl border border-[var(--line-default)] bg-[var(--surface-base)] px-3 py-2">
           <input
             ref={inputRef}
@@ -68,12 +73,7 @@ export function CommandPalette({ items, onClose }: CommandPaletteProps) {
                 className="flex items-center justify-between rounded-xl border border-transparent px-3 py-2 text-sm text-[var(--ink-default)] transition hover:border-[var(--line-default)] hover:bg-[var(--surface-soft)]"
               >
                 <span>{item.label}</span>
-                <span
-                  className="inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-[var(--line-soft)] bg-[var(--surface-base)] px-1 text-[11px] font-semibold text-[var(--ink-subtle)]"
-                  aria-hidden="true"
-                >
-                  {item.icon}
-                </span>
+                <span className="text-xs text-[var(--ink-subtle)]">이동</span>
               </Link>
             </li>
           ))}

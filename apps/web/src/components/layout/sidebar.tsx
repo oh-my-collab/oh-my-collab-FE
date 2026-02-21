@@ -7,7 +7,6 @@ export type SidebarItem = {
   path: string;
   href: string;
   label: string;
-  icon: string;
   adminOnly?: boolean;
 };
 
@@ -48,21 +47,13 @@ export function Sidebar({
               onClick={onNavigate}
               title={collapsed ? item.label : undefined}
             >
-              {collapsed ? (
-                <span
-                  className="inline-flex w-full items-center justify-center rounded-lg border border-[var(--line-soft)] bg-[var(--surface-base)] px-2 py-1 text-xs font-semibold text-[var(--ink-subtle)]"
-                  aria-hidden="true"
-                >
-                  {item.icon}
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-[var(--line-soft)] bg-[var(--surface-base)] px-1 text-[11px] font-semibold text-[var(--ink-subtle)]">
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                </span>
-              )}
+              <span
+                className={`block leading-tight ${
+                  collapsed ? "text-xs font-semibold tracking-[-0.01em]" : "text-sm"
+                }`}
+              >
+                {item.label}
+              </span>
             </Link>
           );
         })}

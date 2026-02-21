@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import type {
@@ -14,6 +14,20 @@ import { Sidebar, type SidebarItem } from "./sidebar";
 
 const STORAGE_KEY = "omc.sidebar.collapsed";
 const SIDEBAR_NAV_ID = "app-sidebar-nav";
+const MOBILE_DRAWER_ID = "app-mobile-sidebar";
+
+function getFocusableElements(container: HTMLElement | null) {
+  if (!container) return [] as HTMLElement[];
+  const selector = [
+    "a[href]",
+    "button:not([disabled])",
+    "input:not([disabled])",
+    "select:not([disabled])",
+    "textarea:not([disabled])",
+    "[tabindex]:not([tabindex='-1'])",
+  ].join(",");
+  return Array.from(container.querySelectorAll<HTMLElement>(selector));
+}
 
 function ChevronIcon({ direction }: { direction: "left" | "right" }) {
   const path =
@@ -69,6 +83,7 @@ export function AppShell({
   });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
+  const mobileDrawerRef = useRef<HTMLElement | null>(null);
   const canAccessAdmin = canViewAdmin || Boolean(adminWorkspaceId);
 
   useEffect(() => {
@@ -85,6 +100,50 @@ export function AppShell({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const activeBeforeOpen = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusables = getFocusableElements(mobileDrawerRef.current);
+    focusables[0]?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusableInDrawer = getFocusableElements(mobileDrawerRef.current);
+      if (focusableInDrawer.length === 0) return;
+
+      const first = focusableInDrawer[0];
+      const last = focusableInDrawer[focusableInDrawer.length - 1];
+      const current = document.activeElement as HTMLElement | null;
+
+      if (event.shiftKey && current === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && current === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+      activeBeforeOpen?.focus();
+    };
+  }, [mobileOpen]);
 
   const navItems = useMemo<SidebarItem[]>(
     () =>
@@ -107,7 +166,7 @@ export function AppShell({
     return matched?.label ?? "협업 공간";
   }, [navItems, pathname]);
 
-  const sidebarWidthClass = collapsed ? "lg:w-20" : "lg:w-72";
+  const sidebarWidthClass = collapsed ? "lg:w-28" : "lg:w-72";
   const roleLabel = role ? ROLE_COPY[role] : "권한 미확인";
   const toggleLabel = collapsed ? "사이드바 펼치기" : "사이드바 접기";
 
@@ -167,6 +226,8 @@ export function AppShell({
               <button
                 type="button"
                 aria-label="메뉴 열기"
+                aria-expanded={mobileOpen}
+                aria-controls={MOBILE_DRAWER_ID}
                 className="rounded-md border border-[var(--line-default)] px-3 py-1.5 text-sm text-[var(--ink-default)] lg:hidden"
                 onClick={() => setMobileOpen(true)}
               >
@@ -224,7 +285,14 @@ export function AppShell({
             className="absolute inset-0 bg-[rgba(28,52,110,0.36)]"
             onClick={() => setMobileOpen(false)}
           />
-          <aside className="absolute left-0 top-0 h-full w-72 border-r border-[var(--line-default)] bg-[var(--surface-raised)] px-3 py-4">
+          <aside
+            id={MOBILE_DRAWER_ID}
+            ref={mobileDrawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="모바일 사이드바"
+            className="absolute left-0 top-0 h-full w-72 border-r border-[var(--line-default)] bg-[var(--surface-raised)] px-3 py-4"
+          >
             <div className="flex items-center justify-between gap-2 px-1">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--primary-700)]">

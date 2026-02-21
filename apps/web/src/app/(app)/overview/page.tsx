@@ -1,4 +1,5 @@
 import { getRuntimeCollabStore } from "@/lib/data/store-provider";
+import { TASK_STATUS_COPY } from "@/lib/ui/copy";
 import { resolveWorkspaceContext } from "@/lib/workspace/resolve-workspace-context";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -28,6 +29,14 @@ function isOverdue(dueDate: string | undefined, now: Date) {
   const due = new Date(dueDate).getTime();
   if (Number.isNaN(due)) return false;
   return due < now.getTime();
+}
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function formatDayLabel(date: Date) {
+  return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
 export default async function OverviewPage({ searchParams }: OverviewPageProps) {
@@ -75,9 +84,70 @@ export default async function OverviewPage({ searchParams }: OverviewPageProps) 
   const blockedCount = tasks.filter((task) => Boolean(task.isBlocked)).length;
   const doneCount = tasks.filter((task) => task.status === "done").length;
   const inProgressCount = tasks.filter((task) => task.status === "in_progress").length;
+  const todoCount = tasks.filter((task) => task.status === "todo").length;
   const sprintCount = new Set(
     tasks.map((task) => task.sprintKey).filter((value): value is string => Boolean(value))
   ).size;
+  const totalTaskCount = tasks.length;
+  const completionRate =
+    totalTaskCount === 0 ? 0 : Math.round((doneCount / totalTaskCount) * 100);
+
+  const statusDistribution = [
+    {
+      status: "todo",
+      label: TASK_STATUS_COPY.todo,
+      count: todoCount,
+      tone: "warn" as const,
+    },
+    {
+      status: "in_progress",
+      label: TASK_STATUS_COPY.in_progress,
+      count: inProgressCount,
+      tone: "success" as const,
+    },
+    {
+      status: "done",
+      label: TASK_STATUS_COPY.done,
+      count: doneCount,
+      tone: "default" as const,
+    },
+  ].map((item) => ({
+    ...item,
+    ratio: totalTaskCount === 0 ? 0 : Math.round((item.count / totalTaskCount) * 100),
+  }));
+
+  const doneSeries = Array.from({ length: 7 }).map((_, index) => {
+    const target = new Date(now);
+    target.setDate(now.getDate() - (6 - index));
+    const dayStart = startOfDay(target);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayStart.getDate() + 1);
+
+    const count = tasks.filter((task) => {
+      if (task.status !== "done") return false;
+      const updated = new Date(task.updatedAt).getTime();
+      return updated >= dayStart.getTime() && updated < dayEnd.getTime();
+    }).length;
+
+    return {
+      label: formatDayLabel(target),
+      count,
+    };
+  });
+
+  const peakDoneCount = Math.max(1, ...doneSeries.map((item) => item.count));
+  const blockedBySprint = Array.from(
+    tasks
+      .filter((task) => Boolean(task.isBlocked))
+      .reduce((acc, task) => {
+        const key = task.sprintKey?.trim() || "스프린트 미지정";
+        acc.set(key, (acc.get(key) ?? 0) + 1);
+        return acc;
+      }, new Map<string, number>())
+      .entries()
+  )
+    .map(([sprintKey, count]) => ({ sprintKey, count }))
+    .sort((a, b) => b.count - a.count);
 
   const roleCounter = memberships.reduce(
     (acc, membership) => {
@@ -117,6 +187,84 @@ export default async function OverviewPage({ searchParams }: OverviewPageProps) 
         <article className="kpi-card">
           <p className="kpi-label">블로커 작업</p>
           <p className="kpi-value">{blockedCount}</p>
+        </article>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-[1.2fr_1fr]">
+        <article className="section-shell">
+          <div className="section-head">
+            <h2 className="section-title">실행 리포트</h2>
+            <span className="chip">Jira형 보고</span>
+          </div>
+          <ul className="space-y-3">
+            {statusDistribution.map((item) => (
+              <li key={item.status} className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <p className="font-semibold text-[var(--ink-strong)]">{item.label}</p>
+                  <p className="text-[var(--ink-subtle)]">
+                    {item.count}건 · {item.ratio}%
+                  </p>
+                </div>
+                <div className="progress-track">
+                  <span className="progress-fill" style={{ width: `${item.ratio}%` }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <article className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-base)] p-3">
+              <p className="text-xs text-[var(--ink-subtle)]">전체 완료율</p>
+              <p className="mt-2 text-sm font-semibold text-[var(--ink-strong)]">
+                {completionRate}%
+              </p>
+            </article>
+            <article className="rounded-xl border border-[var(--line-soft)] bg-[var(--surface-base)] p-3">
+              <p className="text-xs text-[var(--ink-subtle)]">임박+지연 위험도</p>
+              <p className="mt-2 text-sm font-semibold text-[var(--ink-strong)]">
+                {dueSoonCount + overdueCount}건
+              </p>
+            </article>
+          </div>
+        </article>
+
+        <article className="section-shell">
+          <div className="section-head">
+            <h2 className="section-title">최근 7일 완료 추이</h2>
+            <span className="chip">완료 추세</span>
+          </div>
+          <ul className="space-y-2">
+            {doneSeries.map((item) => (
+              <li key={item.label} className="grid grid-cols-[3rem_1fr_2.6rem] items-center gap-2">
+                <span className="text-xs text-[var(--ink-subtle)]">{item.label}</span>
+                <div className="progress-track">
+                  <span
+                    className="progress-fill"
+                    style={{ width: `${Math.round((item.count / peakDoneCount) * 100)}%` }}
+                  />
+                </div>
+                <span className="text-right text-xs font-semibold text-[var(--ink-default)]">
+                  {item.count}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 border-t border-[var(--line-soft)] pt-3">
+            <p className="text-xs text-[var(--ink-subtle)]">스프린트별 블로커 집중도</p>
+            {blockedBySprint.length === 0 ? (
+              <p className="mt-2 text-sm text-[var(--ink-muted)]">블로커가 없습니다.</p>
+            ) : (
+              <ul className="mt-2 space-y-2">
+                {blockedBySprint.slice(0, 4).map((item) => (
+                  <li key={item.sprintKey} className="flex items-center justify-between text-sm">
+                    <span className="text-[var(--ink-default)]">{item.sprintKey}</span>
+                    <span className="status-chip" data-tone="warn">
+                      {item.count}건
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </article>
       </section>
 
