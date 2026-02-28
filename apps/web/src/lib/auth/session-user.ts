@@ -1,62 +1,40 @@
-import { cookies } from "next/headers";
+﻿import {
+  E2E_BYPASS_COOKIE,
+  getOptionalSessionUserId,
+  getSessionUserIdOrThrow,
+  MOCK_SESSION_COOKIE,
+} from "@/features/auth/session";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+export { E2E_BYPASS_COOKIE, MOCK_SESSION_COOKIE };
 
-type SessionSourceResult = {
-  user: { id: string } | null;
-};
-
-type SessionUserSource = () => Promise<SessionSourceResult>;
-
-function readCookieValue(cookieHeader: string, key: string) {
-  const keyValuePair = cookieHeader
+function readCookieValue(rawCookie: string | null, name: string) {
+  if (!rawCookie) return undefined;
+  const token = rawCookie
     .split(";")
     .map((part) => part.trim())
-    .find((part) => part.startsWith(`${key}=`));
-  if (!keyValuePair) return undefined;
-  return decodeURIComponent(keyValuePair.slice(key.length + 1));
+    .find((part) => part.startsWith(`${name}=`));
+  if (!token) return undefined;
+  return decodeURIComponent(token.slice(name.length + 1));
 }
 
-export function readBypassUserIdFromRequest(
-  request: Request,
-  bypassEnabled: boolean
-) {
+export function readBypassUserIdFromRequest(request: Request, bypassEnabled: boolean) {
   if (!bypassEnabled) return undefined;
   const cookieHeader = request.headers.get("cookie");
-  if (!cookieHeader) return undefined;
-  return readCookieValue(cookieHeader, "e2e-user-id");
-}
-
-export async function getSessionUserIdFrom(source: SessionUserSource) {
-  const { user } = await source();
-
-  if (!user) {
-    throw new Error("UNAUTHORIZED");
-  }
-
-  return user.id;
+  return readCookieValue(cookieHeader, E2E_BYPASS_COOKIE);
 }
 
 export async function getSessionUserId(request?: Request) {
-  const bypassEnabled = process.env.E2E_AUTH_BYPASS === "1";
-  const bypassUserId =
-    request && readBypassUserIdFromRequest(request, bypassEnabled);
-  if (bypassUserId) return bypassUserId;
+  return getSessionUserIdOrThrow(request);
+}
 
-  if (!request && bypassEnabled) {
-    const cookieStore = await cookies();
-    const bypassFromCookieStore = cookieStore.get("e2e-user-id")?.value;
-    if (bypassFromCookieStore) return bypassFromCookieStore;
-  }
+export async function getSessionUserIdFrom(
+  source: () => Promise<{ user: { id: string } | null }>
+) {
+  const { user } = await source();
+  if (!user?.id) throw new Error("UNAUTHORIZED");
+  return user.id;
+}
 
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getUser();
-
-  if (error) {
-    throw new Error("UNAUTHORIZED");
-  }
-
-  return getSessionUserIdFrom(async () => ({
-    user: data.user ? { id: data.user.id } : null,
-  }));
+export async function getOptionalSessionUser(request?: Request) {
+  return getOptionalSessionUserId(request);
 }
