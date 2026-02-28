@@ -9,6 +9,7 @@ import { TableSkeleton } from "@/components/shared/skeletons";
 import { useIssuesQuery } from "@/features/issues/queries";
 import { useOrganizationsQuery } from "@/features/orgs/queries";
 import { useUiStore } from "@/features/shared/ui-store";
+import { getApiErrorDescription } from "@/lib/api/error";
 
 export default function BoardPage() {
   const activeOrgId = useUiStore((state) => state.activeOrgId);
@@ -28,7 +29,12 @@ export default function BoardPage() {
   if (query.isLoading) return <TableSkeleton rows={5} />;
 
   if (query.isError) {
-    return <ErrorState title="보드를 불러오지 못했습니다" description="레포 선택 상태를 확인해 주세요." />;
+    return (
+      <ErrorState
+        title="보드를 불러오지 못했습니다"
+        description={getApiErrorDescription(query.error, "레포 선택 상태를 확인해 주세요.")}
+      />
+    );
   }
 
   const issues = query.data?.issues ?? [];

@@ -11,6 +11,7 @@ import { useSessionQuery } from "@/features/auth/queries";
 import { useOrganizationsQuery } from "@/features/orgs/queries";
 import { useRequestsQuery } from "@/features/requests/queries";
 import { useUiStore } from "@/features/shared/ui-store";
+import { getApiErrorDescription } from "@/lib/api/error";
 
 export default function RequestsPage() {
   const activeOrgId = useUiStore((state) => state.activeOrgId);
@@ -32,8 +33,12 @@ export default function RequestsPage() {
   }
 
   if (orgQuery.isError || sessionQuery.isError || requestsQuery.isError) {
+    const sourceError = orgQuery.error ?? sessionQuery.error ?? requestsQuery.error;
     return (
-      <ErrorState title="협업 요청을 불러오지 못했습니다" description="잠시 후 다시 시도해 주세요." />
+      <ErrorState
+        title="협업 요청을 불러오지 못했습니다"
+        description={getApiErrorDescription(sourceError, "잠시 후 다시 시도해 주세요.")}
+      />
     );
   }
 

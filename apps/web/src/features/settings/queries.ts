@@ -2,20 +2,20 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { mockClient } from "@/lib/api/mock-client";
+import { backendClient } from "@/lib/api/backend-client";
 import { queryKeys } from "@/lib/api/query-keys";
 
 export function useSettingsQuery() {
   return useQuery({
     queryKey: queryKeys.settings,
-    queryFn: () => mockClient.getSettings(),
+    queryFn: () => backendClient.getSettings(),
   });
 }
 
 export function useUpdateSettingsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Record<string, unknown>) => mockClient.updateSettings(input),
+    mutationFn: (input: Record<string, unknown>) => backendClient.updateSettings(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.settings });
     },

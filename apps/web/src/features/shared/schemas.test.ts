@@ -2,6 +2,7 @@
 
 import {
   createIssueSchema,
+  loginSchema,
   createRequestSchema,
   issueReorderSchema,
   updateSettingsSchema,
@@ -52,5 +53,14 @@ describe("schemas", () => {
 
   it("rejects empty settings patch", () => {
     expect(() => updateSettingsSchema.parse({})).toThrow();
+  });
+
+  it("validates login payload with email and password", () => {
+    expect(() =>
+      loginSchema.parse({
+        email: "owner@example.com",
+        password: "password123",
+      })
+    ).not.toThrow();
   });
 });

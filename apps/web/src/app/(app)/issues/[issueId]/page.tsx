@@ -7,6 +7,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ErrorState } from "@/components/shared/error-state";
 import { TableSkeleton } from "@/components/shared/skeletons";
 import { useIssueQuery } from "@/features/issues/queries";
+import { getApiErrorDescription } from "@/lib/api/error";
 
 export default function IssueDetailPage() {
   const params = useParams<{ issueId: string }>();
@@ -17,7 +18,12 @@ export default function IssueDetailPage() {
   if (query.isLoading) return <TableSkeleton rows={4} />;
 
   if (query.isError) {
-    return <ErrorState title="이슈 상세를 불러오지 못했습니다" description="잠시 후 다시 시도해 주세요." />;
+    return (
+      <ErrorState
+        title="이슈 상세를 불러오지 못했습니다"
+        description={getApiErrorDescription(query.error, "잠시 후 다시 시도해 주세요.")}
+      />
+    );
   }
 
   const issue = query.data?.issue;

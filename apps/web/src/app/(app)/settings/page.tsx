@@ -10,8 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { ErrorState } from "@/components/shared/error-state";
+import { TableSkeleton } from "@/components/shared/skeletons";
 import { useOrganizationsQuery } from "@/features/orgs/queries";
 import { useSettingsQuery, useUpdateSettingsMutation } from "@/features/settings/queries";
+import { getApiErrorDescription } from "@/lib/api/error";
 
 const schema = z.object({
   defaultOrgId: z.string().min(1),
@@ -47,6 +50,20 @@ export default function SettingsPage() {
       issueStatusNotifications: settingsQuery.data.settings.issueStatusNotifications,
     });
   }, [form, settingsQuery.data?.settings]);
+
+  if (orgQuery.isLoading || settingsQuery.isLoading) {
+    return <TableSkeleton rows={4} />;
+  }
+
+  if (orgQuery.isError || settingsQuery.isError) {
+    const sourceError = orgQuery.error ?? settingsQuery.error;
+    return (
+      <ErrorState
+        title="설정 정보를 불러오지 못했습니다"
+        description={getApiErrorDescription(sourceError, "잠시 후 다시 시도해 주세요.")}
+      />
+    );
+  }
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {

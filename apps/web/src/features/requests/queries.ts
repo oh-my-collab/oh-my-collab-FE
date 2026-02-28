@@ -2,13 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { mockClient } from "@/lib/api/mock-client";
+import { backendClient } from "@/lib/api/backend-client";
 import { queryKeys } from "@/lib/api/query-keys";
 
 export function useRequestsQuery(orgId: string) {
   return useQuery({
     queryKey: queryKeys.requests(orgId),
-    queryFn: () => mockClient.listRequests(orgId),
+    queryFn: () => backendClient.listRequests(orgId),
     enabled: Boolean(orgId),
   });
 }

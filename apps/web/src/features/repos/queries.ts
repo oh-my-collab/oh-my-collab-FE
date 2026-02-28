@@ -2,13 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { mockClient } from "@/lib/api/mock-client";
+import { backendClient } from "@/lib/api/backend-client";
 import { queryKeys } from "@/lib/api/query-keys";
 
 export function useRepositoriesByOrgQuery(orgId: string) {
   return useQuery({
     queryKey: queryKeys.reposByOrg(orgId),
-    queryFn: () => mockClient.listReposByOrg(orgId),
+    queryFn: () => backendClient.listReposByOrg(orgId),
     enabled: Boolean(orgId),
   });
 }
@@ -16,7 +16,7 @@ export function useRepositoriesByOrgQuery(orgId: string) {
 export function useRepositoryQuery(repoId: string) {
   return useQuery({
     queryKey: queryKeys.repo(repoId),
-    queryFn: () => mockClient.getRepo(repoId),
+    queryFn: () => backendClient.getRepo(repoId),
     enabled: Boolean(repoId),
   });
 }
@@ -24,7 +24,7 @@ export function useRepositoryQuery(repoId: string) {
 export function useRepositoryActivityQuery(repoId: string) {
   return useQuery({
     queryKey: queryKeys.repoActivity(repoId),
-    queryFn: () => mockClient.getRepoActivity(repoId),
+    queryFn: () => backendClient.getRepoActivity(repoId),
     enabled: Boolean(repoId),
   });
 }

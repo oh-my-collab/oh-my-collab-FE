@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOrganizationsQuery } from "@/features/orgs/queries";
 import { useTeamReportQuery } from "@/features/reports/queries";
 import { useUiStore } from "@/features/shared/ui-store";
+import { getApiErrorDescription } from "@/lib/api/error";
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState<"week" | "month">("week");
@@ -36,7 +37,13 @@ export default function ReportsPage() {
   }
 
   if (orgQuery.isError || reportQuery.isError || !reportQuery.data?.report) {
-    return <ErrorState title="리포트를 불러오지 못했습니다" description="조직 선택 상태를 확인해 주세요." />;
+    const sourceError = orgQuery.error ?? reportQuery.error;
+    return (
+      <ErrorState
+        title="리포트를 불러오지 못했습니다"
+        description={getApiErrorDescription(sourceError, "조직 선택 상태를 확인해 주세요.")}
+      />
+    );
   }
 
   const report = reportQuery.data.report;

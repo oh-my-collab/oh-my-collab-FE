@@ -10,6 +10,7 @@ import { ErrorState } from "@/components/shared/error-state";
 import { TableSkeleton } from "@/components/shared/skeletons";
 import { useRepositoryActivityQuery, useRepositoryQuery } from "@/features/repos/queries";
 import { useIssuesQuery } from "@/features/issues/queries";
+import { getApiErrorDescription } from "@/lib/api/error";
 
 export default function RepoDetailPage() {
   const params = useParams<{ orgId: string; repoId: string }>();
@@ -25,8 +26,12 @@ export default function RepoDetailPage() {
   }
 
   if (repoQuery.isError || activityQuery.isError || issuesQuery.isError) {
+    const sourceError = repoQuery.error ?? activityQuery.error ?? issuesQuery.error;
     return (
-      <ErrorState title="레포 정보를 불러오지 못했습니다" description="잠시 후 다시 시도해 주세요." />
+      <ErrorState
+        title="레포 정보를 불러오지 못했습니다"
+        description={getApiErrorDescription(sourceError, "잠시 후 다시 시도해 주세요.")}
+      />
     );
   }
 

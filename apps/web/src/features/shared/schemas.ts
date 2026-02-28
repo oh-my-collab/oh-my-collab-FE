@@ -66,7 +66,8 @@ export const updateRequestSchema = z
   .refine((input) => input.status || input.comment, { message: "EMPTY_PATCH" });
 
 export const loginSchema = z.object({
-  userId: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(8),
 });
 
 export const createOrgSchema = z.object({

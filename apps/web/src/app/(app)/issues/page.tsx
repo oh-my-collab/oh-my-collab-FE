@@ -15,6 +15,7 @@ import { useSessionQuery } from "@/features/auth/queries";
 import { useIssuesQuery } from "@/features/issues/queries";
 import { useOrganizationsQuery } from "@/features/orgs/queries";
 import { useUiStore } from "@/features/shared/ui-store";
+import { getApiErrorDescription } from "@/lib/api/error";
 import { formatDate } from "@/lib/utils";
 
 export default function IssuesPage() {
@@ -58,7 +59,7 @@ export default function IssuesPage() {
     return (
       <ErrorState
         title="이슈 목록을 불러오지 못했습니다"
-        description="필터를 초기화하고 다시 시도해 주세요."
+        description={getApiErrorDescription(query.error, "필터를 초기화하고 다시 시도해 주세요.")}
         onRetry={() => void query.refetch()}
       />
     );
