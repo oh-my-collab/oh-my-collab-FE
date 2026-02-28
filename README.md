@@ -1,21 +1,19 @@
-# oh-my-collab (Option A)
+﻿# oh-my-collab Frontend
 
-캡스톤 팀이 월 구독료 없이 사용할 수 있도록 설계한 협업 툴 프로젝트입니다.  
-Vercel + Supabase 조합을 기준으로 문서화, 태스크 관리, 목표 추적, 인사이트 기능을 제공합니다.
+이 저장소는 Next.js 기반 **프론트엔드 전용** 애플리케이션입니다.
+백엔드는 별도 Nest 저장소에서 운영하며, 프론트는 환경변수로 지정한 API만 호출합니다.
 
-## 프로젝트 구조
-- `apps/web`: Next.js(App Router) 기반 웹 애플리케이션
-- `apps/web/supabase/migrations`: DB 스키마 및 인사이트 SQL 마이그레이션
-- `docs/deploy`: 배포 및 환경 설정 문서
-- `docs/plans`: 기획/설계/구현 계획 문서
+## 구조
+- `apps/web`: Next.js(App Router) 프론트엔드
+- `docs/plans`: 구현/전환 계획 문서
 
-## 로컬 실행 방법
+## 실행
 1. 의존성 설치
 ```bash
 npm --prefix apps/web install
 ```
 
-2. 환경 변수 파일 준비
+2. 환경변수 설정
 ```bash
 cp apps/web/.env.example apps/web/.env.local
 ```
@@ -25,9 +23,15 @@ cp apps/web/.env.example apps/web/.env.local
 npm --prefix apps/web run dev
 ```
 
-## 주요 검증 명령
-아래 명령은 기능 수정 후 기본적으로 실행하는 것을 권장합니다.
+## 필수 환경변수
+- `NEXT_PUBLIC_API_BASE_URL`: Nest API Base URL
 
+예시:
+```env
+NEXT_PUBLIC_API_BASE_URL=https://api.example.com
+```
+
+## 검증 명령
 ```bash
 npm --prefix apps/web run lint
 npm --prefix apps/web run test
@@ -35,17 +39,6 @@ npm --prefix apps/web run test:e2e
 npm --prefix apps/web run build
 ```
 
-## Supabase 마이그레이션 순서
-1. `apps/web/supabase/migrations/20260219_001_init.sql`
-2. `apps/web/supabase/migrations/20260219_002_insights.sql`
-3. `apps/web/supabase/migrations/20260220_003_admin_reviews.sql`
-4. `apps/web/supabase/migrations/20260221_004_workspace_rls.sql`
-
-## 샘플 데이터 시드
-```bash
-npm --prefix apps/web run seed -- --owner-user-id <OWNER_USER_UUID> --workspace-name "My Capstone Team"
-```
-
-## 배포/환경 문서
-- 빠른 배포 가이드: `docs/deploy/vercel-supabase-quickstart.md`
-- 환경 변수 점검표: `docs/deploy/env-checklist.md`
+## 동작 참고
+- `NEXT_PUBLIC_API_BASE_URL`이 설정되지 않으면 데이터 요청 시 설정 안내 에러가 표시됩니다.
+- E2E 테스트는 네트워크 모킹을 사용하므로 백엔드 서버 없이 실행 가능합니다.
