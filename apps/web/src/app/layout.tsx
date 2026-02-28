@@ -1,22 +1,22 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
+
 import "./globals.css";
+import { AppProviders } from "@/lib/providers";
 
 export const metadata: Metadata = {
   title: {
-    default: "oh-my-collab",
-    template: "%s | oh-my-collab",
+    default: "협업툴",
+    template: "%s | 협업툴",
   },
-  description: "팀 협업 실행 데이터와 관리자 평가 참고자료를 통합 관리하는 워크스페이스.",
+  description: "기여도 추적 + AI 난이도 판별 리포트 협업 플랫폼",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko">
-      <body className="antialiased">{children}</body>
+    <html lang="ko" suppressHydrationWarning>
+      <body>
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }
