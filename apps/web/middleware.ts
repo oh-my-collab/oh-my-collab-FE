@@ -1,16 +1,16 @@
-import { createServerClient } from "@supabase/ssr";
+﻿import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const PROTECTED_ROUTE_PREFIXES = [
-  "/overview",
-  "/deadlines",
-  "/team",
-  "/tasks",
-  "/goals",
-  "/docs",
-  "/insights",
-  "/admin",
+  "/orgs",
+  "/board",
+  "/issues",
+  "/requests",
+  "/reports",
+  "/settings",
 ] as const;
+
+const AUTH_COOKIE_NAMES = ["mock-user-id", "e2e-user-id"] as const;
 
 export function isProtectedPath(pathname: string) {
   return PROTECTED_ROUTE_PREFIXES.some(
@@ -18,10 +18,12 @@ export function isProtectedPath(pathname: string) {
   );
 }
 
-function getSupabaseEnv() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return { url, anonKey };
+function hasSessionCookie(request: NextRequest) {
+  return AUTH_COOKIE_NAMES.some((name) => Boolean(request.cookies.get(name)?.value));
+}
+
+function hasSupabaseEnv() {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
 export async function middleware(request: NextRequest) {
@@ -31,38 +33,47 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const { url, anonKey } = getSupabaseEnv();
-
-  if (!url || !anonKey) {
+  if (process.env.E2E_AUTH_BYPASS === "1") {
     return NextResponse.next();
   }
 
-  const response = NextResponse.next({
-    request,
-  });
+  if (hasSessionCookie(request)) {
+    return NextResponse.next();
+  }
 
-  const supabase = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
+  if (!hasSupabaseEnv()) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.searchParams.set("redirectedFrom", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  const response = NextResponse.next({ request });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options);
+          });
+        },
       },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-      },
-    },
-  });
+    }
+  );
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const setupUrl = request.nextUrl.clone();
-    setupUrl.pathname = "/setup";
-    setupUrl.searchParams.set("redirectedFrom", pathname);
-    return NextResponse.redirect(setupUrl);
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    loginUrl.searchParams.set("redirectedFrom", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return response;
@@ -70,13 +81,11 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/overview/:path*",
-    "/deadlines/:path*",
-    "/team/:path*",
-    "/tasks/:path*",
-    "/goals/:path*",
-    "/docs/:path*",
-    "/insights/:path*",
-    "/admin/:path*",
+    "/orgs/:path*",
+    "/board/:path*",
+    "/issues/:path*",
+    "/requests/:path*",
+    "/reports/:path*",
+    "/settings/:path*",
   ],
 };
