@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { useOrganizationsQuery } from "@/features/orgs/queries";
 import { useUserReportQuery } from "@/features/reports/queries";
 import { useUiStore } from "@/features/shared/ui-store";
+import { getApiErrorDescription } from "@/lib/api/error";
 
 export default function UserReportPage() {
   const params = useParams<{ userId: string }>();
@@ -35,7 +36,13 @@ export default function UserReportPage() {
   }
 
   if (orgQuery.isError || reportQuery.isError || !reportQuery.data?.report) {
-    return <ErrorState title="유저 리포트를 불러오지 못했습니다" description="조직 또는 유저를 확인해 주세요." />;
+    const sourceError = orgQuery.error ?? reportQuery.error;
+    return (
+      <ErrorState
+        title="유저 리포트를 불러오지 못했습니다"
+        description={getApiErrorDescription(sourceError, "조직 또는 유저를 확인해 주세요.")}
+      />
+    );
   }
 
   const report = reportQuery.data.report;

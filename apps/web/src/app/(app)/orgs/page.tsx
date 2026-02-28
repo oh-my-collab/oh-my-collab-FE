@@ -11,10 +11,11 @@ import { CardSkeleton } from "@/components/shared/skeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCreateOrganizationMutation, useOrganizationsQuery } from "@/features/orgs/queries";
+import { getApiErrorDescription } from "@/lib/api/error";
 
 export default function OrgsPage() {
   const [name, setName] = useState("");
-  const { data, isLoading, isError, refetch } = useOrganizationsQuery();
+  const { data, isLoading, isError, refetch, error } = useOrganizationsQuery();
   const createOrgMutation = useCreateOrganizationMutation();
 
   const onCreate = async () => {
@@ -61,7 +62,7 @@ export default function OrgsPage() {
       ) : isError ? (
         <ErrorState
           title="조직을 불러오지 못했습니다"
-          description="네트워크 상태를 확인한 뒤 다시 시도해 주세요."
+          description={getApiErrorDescription(error, "네트워크 상태를 확인한 뒤 다시 시도해 주세요.")}
           onRetry={() => void refetch()}
         />
       ) : !data?.organizations.length ? (

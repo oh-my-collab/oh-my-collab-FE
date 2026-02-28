@@ -13,6 +13,7 @@ import { useOrganizationQuery } from "@/features/orgs/queries";
 import { useRepositoriesByOrgQuery } from "@/features/repos/queries";
 import { useIssuesQuery } from "@/features/issues/queries";
 import { useUiStore } from "@/features/shared/ui-store";
+import { getApiErrorDescription } from "@/lib/api/error";
 
 export default function OrgDashboardPage() {
   const params = useParams<{ orgId: string }>();
@@ -33,10 +34,11 @@ export default function OrgDashboardPage() {
   }
 
   if (orgQuery.isError || reposQuery.isError || issuesQuery.isError) {
+    const sourceError = orgQuery.error ?? reposQuery.error ?? issuesQuery.error;
     return (
       <ErrorState
         title="조직 대시보드를 불러오지 못했습니다"
-        description="잠시 후 다시 시도해 주세요."
+        description={getApiErrorDescription(sourceError, "잠시 후 다시 시도해 주세요.")}
       />
     );
   }

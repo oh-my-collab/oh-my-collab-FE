@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { mockClient } from "@/lib/api/mock-client";
+import { backendClient } from "@/lib/api/backend-client";
 import { queryKeys } from "@/lib/api/query-keys";
 
 export function serializeIssueFilters(filters: Record<string, string | undefined>) {
@@ -18,7 +18,7 @@ export function useIssuesQuery(filters: Record<string, string | undefined>) {
   const key = params.toString();
   return useQuery({
     queryKey: queryKeys.issues(key),
-    queryFn: () => mockClient.listIssues(params),
+    queryFn: () => backendClient.listIssues(params),
     enabled: Boolean(filters.orgId),
   });
 }
@@ -26,7 +26,7 @@ export function useIssuesQuery(filters: Record<string, string | undefined>) {
 export function useIssueQuery(issueId: string) {
   return useQuery({
     queryKey: queryKeys.issue(issueId),
-    queryFn: () => mockClient.getIssue(issueId),
+    queryFn: () => backendClient.getIssue(issueId),
     enabled: Boolean(issueId),
   });
 }
