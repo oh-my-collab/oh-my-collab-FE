@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 
-import { getSessionUserIdFrom, readBypassUserIdFromRequest } from "./session-user";
+import { getSessionUserIdFrom, readSessionUserIdFromRequest } from "./session-user";
 
 describe("getSessionUserIdFrom", () => {
   it("throws UNAUTHORIZED when session user is missing", async () => {
@@ -15,14 +15,13 @@ describe("getSessionUserIdFrom", () => {
     ).resolves.toBe("user-1");
   });
 
-  it("reads bypass user id from cookie when bypass enabled", () => {
+  it("reads session user id from auth cookie", () => {
     const request = new Request("http://localhost", {
       headers: {
-        cookie: "foo=bar; e2e-user-id=test-user; hello=world",
+        cookie: "foo=bar; auth_session=test-user; hello=world",
       },
     });
 
-    expect(readBypassUserIdFromRequest(request, true)).toBe("test-user");
-    expect(readBypassUserIdFromRequest(request, false)).toBeUndefined();
+    expect(readSessionUserIdFromRequest(request)).toBe("test-user");
   });
 });

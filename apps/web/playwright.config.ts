@@ -9,9 +9,7 @@ export default defineConfig({
   webServer: {
     command: "npm run dev",
     env: {
-      E2E_AUTH_BYPASS: "1",
-      NEXT_PUBLIC_SUPABASE_URL: "",
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: "",
+      NEXT_PUBLIC_API_BASE_URL: "http://localhost:3000/__mock_api__",
     },
     port: 3000,
     reuseExistingServer: false,
