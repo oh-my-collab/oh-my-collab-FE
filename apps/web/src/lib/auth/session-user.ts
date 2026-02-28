@@ -1,11 +1,7 @@
-﻿import {
-  E2E_BYPASS_COOKIE,
-  getOptionalSessionUserId,
-  getSessionUserIdOrThrow,
-  MOCK_SESSION_COOKIE,
-} from "@/features/auth/session";
+﻿import { AUTH_SESSION_COOKIE_NAME } from "@/features/auth/constants";
+import { getOptionalSessionUserId, getSessionUserIdOrThrow } from "@/features/auth/session";
 
-export { E2E_BYPASS_COOKIE, MOCK_SESSION_COOKIE };
+export { AUTH_SESSION_COOKIE_NAME };
 
 function readCookieValue(rawCookie: string | null, name: string) {
   if (!rawCookie) return undefined;
@@ -17,10 +13,8 @@ function readCookieValue(rawCookie: string | null, name: string) {
   return decodeURIComponent(token.slice(name.length + 1));
 }
 
-export function readBypassUserIdFromRequest(request: Request, bypassEnabled: boolean) {
-  if (!bypassEnabled) return undefined;
-  const cookieHeader = request.headers.get("cookie");
-  return readCookieValue(cookieHeader, E2E_BYPASS_COOKIE);
+export function readSessionUserIdFromRequest(request: Request) {
+  return readCookieValue(request.headers.get("cookie"), AUTH_SESSION_COOKIE_NAME);
 }
 
 export async function getSessionUserId(request?: Request) {
