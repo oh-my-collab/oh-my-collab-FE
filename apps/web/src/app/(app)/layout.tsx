@@ -1,25 +1,18 @@
-import type { ReactNode } from "react";
+﻿import { redirect } from "next/navigation";
 
-import { AppShell } from "@/components/layout/app-shell";
-import { resolveWorkspaceContext } from "@/lib/workspace/resolve-workspace-context";
+import { AppShell } from "@/components/app-shell/app-shell";
+import { getSessionUser } from "@/features/auth/current-user";
 
-type AppLayoutProps = {
-  children: ReactNode;
-};
+export default async function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const user = await getSessionUser();
 
-export default async function AppLayout({ children }: AppLayoutProps) {
-  const workspaceContext = await resolveWorkspaceContext();
+  if (!user) {
+    redirect("/login");
+  }
 
-  return (
-    <AppShell
-      canViewAdmin={workspaceContext.canViewAdmin}
-      adminWorkspaceId={workspaceContext.adminWorkspaceId ?? undefined}
-      workspaceId={workspaceContext.workspaceId ?? undefined}
-      workspaceName={workspaceContext.workspaceName}
-      role={workspaceContext.role}
-      workspaces={workspaceContext.workspaces}
-    >
-      {children}
-    </AppShell>
-  );
+  return <AppShell>{children}</AppShell>;
 }
