@@ -160,7 +160,15 @@ export const backendClient = {
     ),
 
   listIssues: (orgId: string, params: URLSearchParams) =>
-    parseResponse<{ issues: Issue[]; users: User[] }>(
+    parseResponse<{
+      issues: Issue[];
+      users: User[];
+      page: number;
+      size: number;
+      totalCount: number;
+      sort: string;
+      filtersEcho: Record<string, string | undefined>;
+    }>(
       apiFetch(endpoints.issues.list, {
         cache: "no-store",
         searchParams: withOrgId(params, orgId),
