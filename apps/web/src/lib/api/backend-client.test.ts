@@ -77,4 +77,39 @@ describe("backend-client", () => {
     expect(result.page).toBe(1);
     expect(result.sort).toBe("updatedAt:desc");
   });
+
+  it("keeps latestIssue in issues payload on VERSION_CONFLICT", async () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = "http://localhost:4000";
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: "VERSION_CONFLICT",
+          message: "Latest version conflict.",
+          requestId: "req-1",
+          issues: {
+            latestIssue: {
+              id: "ISS-101",
+              version: 7,
+              updatedAt: "2026-02-28T10:20:00.000Z",
+            },
+          },
+        }),
+        {
+          status: 409,
+          headers: { "content-type": "application/json" },
+        }
+      )
+    );
+
+    await expect(backendClient.updateIssue("org-1", "ISS-101", { version: 6 })).rejects.toMatchObject({
+      message: "Latest version conflict.",
+      issues: {
+        latestIssue: {
+          id: "ISS-101",
+          version: 7,
+        },
+      },
+    });
+  });
 });
