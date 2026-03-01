@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -119,7 +119,7 @@ export default function IssuesPage() {
         <>
           <DataTable
             columns={[
-              { key: "id", label: "ID", sortable: true, render: (value) => <Link className="text-primary hover:underline" href={`/issues/${String(value)}`}>{String(value)}</Link> },
+              { key: "id", label: "ID", sortable: true, render: (value, row) => <Link className="text-primary hover:underline" href={`/issues/${String(value)}?orgId=${String(row.orgId ?? "")}`}>{String(value)}</Link> },
               { key: "title", label: "제목", sortable: true },
               { key: "status", label: "상태", sortable: true },
               { key: "priority", label: "우선순위", sortable: true },
